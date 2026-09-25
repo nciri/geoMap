@@ -31,12 +31,14 @@ dependencies {
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.0.0")
     implementation("io.github.missioncommand:mil-sym-java:2.9.6")
     implementation("geomap:geomap-shared:0.1.0")
+    implementation("io.minio:minio:9.0.3")
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
     testImplementation("org.springframework.security:spring-security-test")
     testImplementation("org.testcontainers:testcontainers-postgresql")
     testImplementation("org.testcontainers:testcontainers-junit-jupiter")
+    testImplementation("org.testcontainers:testcontainers-minio")
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
