@@ -46,16 +46,18 @@ class SymbolRenderer(
         sidc: String,
         modifiers: Map<String, String>,
         pixelSize: Int,
-    ): RenderedIcon {
-        val keys = milSymModifiers(modifiers)
-        val info =
-            synchronized(lock) {
-                val renderer = MilStdIconRenderer.getInstance()
-                if (!renderer.CanRender(sidc, HashMap(keys))) throw InvalidInputException("cannot render symbol $sidc")
-                renderer.RenderIcon(sidc, keys, mapOf(MilStdAttributes.PixelSize to "$pixelSize"))
-            } ?: throw InvalidInputException("cannot render symbol $sidc")
-        return RenderedIcon(info.imageAsByteArray, info.image.width, info.image.height, info.symbolCenterX, info.symbolCenterY)
-    }
+    ): RenderedIcon =
+        // mil-sym, Jackson and our own helpers can all throw unchecked exceptions on bad/unrenderable input; fail closed as 400.
+        failingClosed(sidc) {
+            val keys = milSymModifiers(modifiers)
+            val info =
+                synchronized(lock) {
+                    val renderer = MilStdIconRenderer.getInstance()
+                    if (!renderer.CanRender(sidc, HashMap(keys))) throw InvalidInputException("cannot render symbol $sidc")
+                    renderer.RenderIcon(sidc, keys, mapOf(MilStdAttributes.PixelSize to "$pixelSize"))
+                } ?: throw InvalidInputException("cannot render symbol $sidc")
+            RenderedIcon(info.imageAsByteArray, info.image.width, info.image.height, info.symbolCenterX, info.symbolCenterY)
+        }
 
     @Suppress("UNCHECKED_CAST")
     fun graphic(
@@ -63,34 +65,48 @@ class SymbolRenderer(
         controlPoints: List<Pair<Double, Double>>,
         modifiers: Map<String, String>,
         band: RenderBand,
-    ): Map<String, Any?> {
-        val keys = milSymModifiers(modifiers)
-        val points = controlPoints.joinToString(" ") { (lon, lat) -> "$lon,$lat" }
-        val output =
-            synchronized(lock) {
-                WebRenderer.RenderSymbol(
-                    "geomap",
-                    "",
-                    "",
-                    sidc,
-                    points,
-                    "clampToGround",
-                    band.scale,
-                    clipBox(controlPoints),
-                    HashMap(keys),
-                    HashMap(),
-                    WebRenderer.OUTPUT_FORMAT_GEOJSON,
-                )
-            }
-        val collection = json.readValue(output, Map::class.java) as Map<String, Any?>
-        if (collection["type"] == "error") throw InvalidInputException("cannot render symbol $sidc")
-        // mil-sym appends a feature carrying only metadata (empty polygon, symbolID…): not something to draw.
-        val drawable =
-            (collection["features"] as List<Map<String, Any?>>).filterNot {
-                "symbolID" in (it["properties"] as Map<String, Any?>)
-            }
-        return mapOf("type" to "FeatureCollection", "features" to drawable)
-    }
+    ): Map<String, Any?> =
+        failingClosed(sidc) {
+            val keys = milSymModifiers(modifiers)
+            val points = controlPoints.joinToString(" ") { (lon, lat) -> "$lon,$lat" }
+            val output =
+                synchronized(lock) {
+                    WebRenderer.RenderSymbol(
+                        "geomap",
+                        "",
+                        "",
+                        sidc,
+                        points,
+                        "clampToGround",
+                        band.scale,
+                        clipBox(controlPoints),
+                        HashMap(keys),
+                        HashMap(),
+                        WebRenderer.OUTPUT_FORMAT_GEOJSON,
+                    )
+                }
+            val collection = json.readValue(output, Map::class.java) as Map<String, Any?>
+            if (collection["type"] == "error") throw InvalidInputException("cannot render symbol $sidc")
+            // mil-sym appends a feature carrying only metadata (empty polygon, symbolID…): not something to draw.
+            val drawable =
+                (collection["features"] as List<Map<String, Any?>>).filterNot {
+                    "symbolID" in (it["properties"] as Map<String, Any?>)
+                }
+            mapOf("type" to "FeatureCollection", "features" to drawable)
+        }
+
+    // Anything that escapes rendering/parsing (mil-sym, Jackson, our own helpers) means the input could not be rendered.
+    private fun <T> failingClosed(
+        sidc: String,
+        render: () -> T,
+    ): T =
+        try {
+            render()
+        } catch (e: InvalidInputException) {
+            throw e
+        } catch (e: RuntimeException) {
+            throw InvalidInputException("cannot render symbol $sidc", e)
+        }
 
     private fun milSymModifiers(modifiers: Map<String, String>): Map<String, String> =
         modifiers.entries.associate { (letter, value) ->

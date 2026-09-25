@@ -2,7 +2,8 @@ package geomap.server.web
 
 class InvalidInputException(
     message: String,
-) : RuntimeException(message)
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
 
 class NotFoundException(
     message: String,

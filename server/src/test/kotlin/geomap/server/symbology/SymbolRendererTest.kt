@@ -41,6 +41,11 @@ class SymbolRendererTest {
     }
 
     @Test
+    fun `reports any rendering failure as invalid input`() {
+        assertFailsWith<InvalidInputException> { renderer.graphic("10032500001401000000", emptyList(), emptyMap(), RenderBand.MID) }
+    }
+
+    @Test
     fun `renders a line graphic as GeoJSON without the metadata feature`() {
         val rendered = features(renderer.graphic("10032500001401000000", line, emptyMap(), RenderBand.MID))
         assertTrue(rendered.any { it.geometryType() == "MultiLineString" })
