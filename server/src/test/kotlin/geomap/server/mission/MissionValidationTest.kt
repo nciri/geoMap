@@ -2,6 +2,8 @@ package geomap.server.mission
 
 import com.jayway.jsonpath.JsonPath
 import geomap.server.IntegrationTest
+import geomap.server.basemap.Basemap
+import geomap.server.basemap.BasemapRepository
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -16,6 +18,9 @@ import java.util.UUID
 class MissionValidationTest : IntegrationTest() {
     @Autowired
     private lateinit var features: FeatureRepository
+
+    @Autowired
+    private lateinit var basemaps: BasemapRepository
 
     private lateinit var missionId: String
 
@@ -36,6 +41,7 @@ class MissionValidationTest : IntegrationTest() {
 
     @BeforeEach
     fun createCompleteMission() {
+        basemaps.insert(Basemap("zone-nord", "Zone Nord", 1, "0".repeat(64), "c2ln", "root", Instant.now()))
         missionId = createMission("""{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}""")
     }
 
@@ -130,5 +136,15 @@ class MissionValidationTest : IntegrationTest() {
         mvc
             .get("/api/missions/00000000-0000-0000-0000-000000000000/validation") { with(planner()) }
             .andExpect { status { isNotFound() } }
+    }
+
+    @Test
+    fun `a mission on an unregistered basemap is not publishable`() {
+        missionId = createMission("""{"name":"Op Sud","basemapId":"zone-sud","validUntil":"2099-01-01T00:00:00Z"}""")
+        add(infantry)
+        validation().andExpect {
+            jsonPath("$.publishable") { value(false) }
+            jsonPath("$.errors[0].code") { value("UNKNOWN_BASEMAP") }
+        }
     }
 }

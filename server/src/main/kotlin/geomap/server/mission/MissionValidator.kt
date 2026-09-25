@@ -1,5 +1,6 @@
 package geomap.server.mission
 
+import geomap.server.basemap.BasemapRepository
 import geomap.server.symbology.SymbolCatalog
 import geomap.server.symbology.SymbolRenderer
 import geomap.server.web.InvalidInputException
@@ -30,6 +31,7 @@ class MissionValidator(
     private val features: FeatureRepository,
     private val catalog: SymbolCatalog,
     private val renderer: SymbolRenderer,
+    private val basemaps: BasemapRepository,
     private val clock: Clock,
 ) {
     fun validate(missionId: UUID): ValidationReport {
@@ -39,7 +41,11 @@ class MissionValidator(
         val errors = mutableListOf<ValidationIssue>()
         val warnings = mutableListOf<ValidationIssue>()
 
-        if (mission.basemapId == null) errors += ValidationIssue("NO_BASEMAP", "mission has no basemap")
+        val basemapId = mission.basemapId
+        when {
+            basemapId == null -> errors += ValidationIssue("NO_BASEMAP", "mission has no basemap")
+            basemaps.find(basemapId) == null -> errors += ValidationIssue("UNKNOWN_BASEMAP", "basemap $basemapId is not registered")
+        }
         val validUntil = mission.validUntil
         when {
             validUntil == null -> errors += ValidationIssue("NO_EXPIRY", "mission has no expiry date")
