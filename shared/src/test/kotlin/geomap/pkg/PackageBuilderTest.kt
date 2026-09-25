@@ -67,4 +67,21 @@ class PackageBuilderTest {
             PackageBuilder(TestKeys.ec.private).build(header, payload, emptyList())
         }
     }
+
+    @Test
+    fun `refuses more recipients than fit in the manifest limit`() {
+        // One RSA key reused under many distinct cert hashes keeps RSA wrapping fast.
+        val manyRecipients = (0 until 50).map { RecipientKey("cert-$it", TestKeys.rsa.public) }
+        assertFailsWith<IllegalArgumentException> {
+            PackageBuilder(TestKeys.ec.private, maxManifestBytes = 1024).build(header, payload, manyRecipients)
+        }
+    }
+
+    @Test
+    fun `refuses duplicate recipients`() {
+        val duplicated = listOf(RecipientKey("cert-a", TestKeys.rsa.public), RecipientKey("cert-a", TestKeys.rsaOther.public))
+        assertFailsWith<IllegalArgumentException> {
+            PackageBuilder(TestKeys.ec.private).build(header, payload, duplicated)
+        }
+    }
 }

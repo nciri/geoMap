@@ -14,9 +14,15 @@ class GmpContainer(
 ) {
     companion object {
         private val MAGIC = "GMP1".encodeToByteArray()
-        private const val MAX_MANIFEST = 64 * 1024
-        private const val MAX_PAYLOAD = 64 * 1024 * 1024
-        private const val MAX_SIGNATURE = 512
+
+        // Bounds allocations when parsing untrusted files; ~1600 RSA-3072 recipients (~649 bytes each).
+        internal const val MAX_MANIFEST = 1024 * 1024
+
+        // Bounds allocations when parsing untrusted files.
+        internal const val MAX_PAYLOAD = 64 * 1024 * 1024
+
+        // Bounds allocations when parsing untrusted files.
+        internal const val MAX_SIGNATURE = 512
 
         fun encodeUnsigned(
             manifest: ByteArray,
