@@ -1,8 +1,10 @@
 package geomap.server.security
 
 import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 class KeycloakRolesTest {
     private fun token(claims: Map<String, Any>): Jwt =
@@ -33,5 +35,17 @@ class KeycloakRolesTest {
     @Test
     fun `falls back to the subject when preferred_username is missing`() {
         assertEquals("3f2a", KeycloakRoles.converter().convert(token(mapOf("scope" to "openid")))!!.name)
+    }
+
+    @Test
+    fun `a token without any subject is an invalid bearer token`() {
+        val jwt =
+            Jwt
+                .withTokenValue("t")
+                .header("alg", "RS256")
+                .claim("scope", "openid")
+                .build()
+        // An AuthenticationException is what the resource server turns into a 401.
+        assertFailsWith<InvalidBearerTokenException> { KeycloakRoles.converter().convert(jwt) }
     }
 }

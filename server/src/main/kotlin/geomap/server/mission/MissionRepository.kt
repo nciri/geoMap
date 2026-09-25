@@ -5,6 +5,7 @@ import geomap.server.db.toUtc
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Repository
 import java.sql.ResultSet
+import java.time.Instant
 import java.util.UUID
 
 @Repository
@@ -37,9 +38,31 @@ class MissionRepository(
             .update()
     }
 
+    fun markDraft(
+        id: UUID,
+        updatedBy: String,
+        updatedAt: Instant,
+    ) {
+        jdbc
+            .sql("UPDATE mission SET status = 'DRAFT', updated_by = :updatedBy, updated_at = :updatedAt WHERE id = :id")
+            .param("id", id)
+            .param("updatedBy", updatedBy)
+            .param("updatedAt", updatedAt.toUtc())
+            .update()
+    }
+
     fun find(id: UUID): Mission? =
         jdbc
             .sql("SELECT * FROM mission WHERE id = :id")
+            .param("id", id)
+            .query { rs, _ -> map(rs) }
+            .optional()
+            .orElse(null)
+
+    // Row lock held until the caller's transaction ends: serializes every change to one mission.
+    fun findForUpdate(id: UUID): Mission? =
+        jdbc
+            .sql("SELECT * FROM mission WHERE id = :id FOR UPDATE")
             .param("id", id)
             .query { rs, _ -> map(rs) }
             .optional()

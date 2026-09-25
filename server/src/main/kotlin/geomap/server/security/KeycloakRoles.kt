@@ -4,8 +4,8 @@ import org.springframework.core.convert.converter.Converter
 import org.springframework.security.authentication.AbstractAuthenticationToken
 import org.springframework.security.core.GrantedAuthority
 import org.springframework.security.core.authority.SimpleGrantedAuthority
-import org.springframework.security.oauth2.jwt.BadJwtException
 import org.springframework.security.oauth2.jwt.Jwt
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
 
 object KeycloakRoles {
@@ -19,7 +19,7 @@ object KeycloakRoles {
             JwtAuthenticationToken(
                 jwt,
                 authorities(jwt),
-                jwt.getClaimAsString("preferred_username") ?: jwt.subject ?: throw BadJwtException("token has no subject"),
+                jwt.getClaimAsString("preferred_username") ?: jwt.subject ?: throw InvalidBearerTokenException("token has no subject"),
             )
         }
 }

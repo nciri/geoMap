@@ -59,7 +59,7 @@ class FeatureService(
                 updatedAt = now,
             )
         features.insert(feature)
-        missions.touch(actor, mission, now)
+        missions.touch(actor, mission.id, now)
         missions.record(actor, "feature.create", "feature:${feature.id}", mapOf("missionId" to "$missionId", "origin" to origin.name))
         return feature
     }
@@ -88,7 +88,7 @@ class FeatureService(
                 updatedAt = now,
             )
         features.update(updated)
-        missions.touch(actor, mission, now)
+        missions.touch(actor, mission.id, now)
         missions.record(actor, "feature.update", "feature:$featureId", mapOf("missionId" to "$missionId"))
         return updated
     }
@@ -102,7 +102,7 @@ class FeatureService(
         val mission = missions.editable(missionId)
         checkAgentMayChange(actor, find(missionId, featureId))
         features.delete(featureId)
-        missions.touch(actor, mission, clock.instant())
+        missions.touch(actor, mission.id, clock.instant())
         missions.record(actor, "feature.delete", "feature:$featureId", mapOf("missionId" to "$missionId"))
     }
 
@@ -135,7 +135,7 @@ class FeatureService(
         val now = clock.instant()
         val decided = current.copy(suggestionStatus = status, updatedAt = now)
         features.update(decided)
-        missions.touch(actor, mission, now)
+        missions.touch(actor, mission.id, now)
         missions.record(actor, action, "feature:$featureId", mapOf("missionId" to "$missionId"))
         return decided
     }

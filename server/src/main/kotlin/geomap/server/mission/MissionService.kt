@@ -64,6 +64,8 @@ class MissionService(
         id: UUID,
         patch: MissionPatch,
     ): Mission {
+        // Agents only propose objects; mission fields go unreviewed into the next publication (spec §9).
+        if (actor.isAgent) throw ForbiddenException("agents cannot change a mission")
         val current = editable(id)
         val now = clock.instant()
         val updated =
@@ -72,7 +74,7 @@ class MissionService(
                 basemapId = patch.basemapId?.let(::validBasemapId) ?: current.basemapId,
                 validUntil = patch.validUntil?.let { validExpiry(it, now) } ?: current.validUntil,
             )
-        touch(actor, updated, now)
+        missions.update(updated.copy(status = MissionStatus.DRAFT, updatedBy = actor.user, updatedAt = now))
         val fields = listOfNotNull(patch.name?.let { "name" }, patch.basemapId?.let { "basemapId" }, patch.validUntil?.let { "validUntil" })
         record(actor, "mission.update", "mission:$id", mapOf("fields" to fields))
         return get(id)
@@ -90,18 +92,19 @@ class MissionService(
     }
 
     fun editable(id: UUID): Mission {
-        val mission = get(id)
+        val mission = missions.findForUpdate(id) ?: throw NotFoundException("mission not found")
         if (mission.status == MissionStatus.WITHDRAWN) throw ConflictException("mission is withdrawn")
         return mission
     }
 
     // Any change sends the mission back to draft until it is published again (spec §5.3).
+    // Only these columns are written, so a stale snapshot cannot undo a concurrent change.
     fun touch(
         actor: Actor,
-        mission: Mission,
+        missionId: UUID,
         now: Instant,
     ) {
-        missions.update(mission.copy(status = MissionStatus.DRAFT, updatedBy = actor.user, updatedAt = now))
+        missions.markDraft(missionId, actor.user, now)
     }
 
     fun record(

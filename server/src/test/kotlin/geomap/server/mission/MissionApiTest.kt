@@ -96,7 +96,19 @@ class MissionApiTest : IntegrationTest() {
                 with(planner())
                 contentType = MediaType.APPLICATION_JSON
                 content = """{"name":"""
-            }.andExpect { status { isBadRequest() } }
+            }.andExpect {
+                status { isBadRequest() }
+                content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+                jsonPath("$.status") { value(400) }
+            }
+    }
+
+    @Test
+    fun `a malformed path id is a problem detail`() {
+        mvc.get("/api/missions/not-a-uuid") { with(planner()) }.andExpect {
+            status { isBadRequest() }
+            content { contentType(MediaType.APPLICATION_PROBLEM_JSON) }
+        }
     }
 
     @Test
@@ -170,6 +182,22 @@ class MissionApiTest : IntegrationTest() {
         val id = create()
         setStatus(id, "PUBLISHED")
         mvc.delete("/api/missions/$id") { with(planner()) }.andExpect { status { isConflict() } }
+    }
+
+    @Test
+    fun `an agent cannot change a mission`() {
+        val id = create()
+        setStatus(id, "PUBLISHED")
+        mvc
+            .patch("/api/missions/$id") {
+                with(agent())
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"name":"Op IA"}"""
+            }.andExpect { status { isForbidden() } }
+        mvc.get("/api/missions/$id") { with(planner()) }.andExpect {
+            jsonPath("$.name") { value("Op Nord") }
+            jsonPath("$.status") { value("PUBLISHED") }
+        }
     }
 
     @Test
