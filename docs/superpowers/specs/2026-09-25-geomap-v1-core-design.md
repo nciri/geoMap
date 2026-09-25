@@ -257,7 +257,7 @@ Métriques Prometheus (Spring Boot Actuator + Micrometer) : publications, durée
 |---|---|
 | Appareil Android de référence | À définir pour mesurer les budgets. |
 | Lecture PMTiles hors ligne par MapLibre Native Android | À vérifier au premier prototype ; repli sur MBTiles sans impact sur le reste. |
-| Licences de mil-sym-java et de ses dépendances | À vérifier avant intégration (les SVG ESRI sont en Apache-2.0). |
+| Licences de mil-sym-java et de ses dépendances | mil-sym-java 2.9.6 : Apache-2.0 (fichier `LICENSE`, `pom.xml`, API GitHub), mais le `MANIFEST.MF` du jar indique encore « GPL v3.0 » — incohérence à faire confirmer par le juridique. Dépendances : geodesy 1.1.3, jsvg 2.0.0 ; SVG ESRI en Apache-2.0. |
 | Stockage de la clé de signature du serveur | Secret Kubernetes en V1 ; HSM ou service de la PKI ALIAS à étudier. |
 | Interface de la PKI ALIAS (API de signature de CSR, publication de la CRL) | À obtenir auprès de l'équipe ALIAS. |
 | Disponibilité de PostGIS sur ALIAS | Non requis en V1 ; utile pour les fonctions spatiales futures. |

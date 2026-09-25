@@ -29,6 +29,7 @@ dependencies {
     runtimeOnly("io.micrometer:micrometer-registry-prometheus")
     // springdoc 3.x is the line for Spring Boot 4.
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.0.0")
+    implementation("io.github.missioncommand:mil-sym-java:2.9.6")
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")
@@ -41,6 +42,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // mil-sym renders with java.awt; CI machines have no display.
+    systemProperty("java.awt.headless", "true")
 }
 
 ktlint {
