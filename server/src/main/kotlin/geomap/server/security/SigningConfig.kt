@@ -11,7 +11,10 @@ import java.security.PublicKey
 data class SigningProperties(
     val privateKeyPem: String,
     val publicKeyPem: String,
-)
+) {
+    // spec 7.3: logs never contain keys - keep the private/public PEM bodies out of toString().
+    override fun toString() = "SigningProperties(***)"
+}
 
 class ServerSigningKey(
     val privateKey: PrivateKey,

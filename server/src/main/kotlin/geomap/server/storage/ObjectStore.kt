@@ -15,7 +15,10 @@ data class StorageProperties(
     val accessKey: String,
     val secretKey: String,
     val bucket: String,
-)
+) {
+    // spec 7.3: logs never contain keys - keep the MinIO secret key out of toString().
+    override fun toString() = "StorageProperties(endpoint=$endpoint, accessKey=$accessKey, bucket=$bucket, secretKey=***)"
+}
 
 @Component
 class ObjectStore(
