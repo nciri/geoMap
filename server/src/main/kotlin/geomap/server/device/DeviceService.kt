@@ -94,7 +94,10 @@ class DeviceService(
     ): List<Device> {
         if (actor.isAgent) throw ForbiddenException("only a human can assign devices")
         missions.editable(missionId)
-        deviceIds.forEach { id ->
+        // Lock devices in a consistent order across all callers so two concurrent assignments
+        // can never wait on each other's rows in opposite directions (deadlock -> 500).
+        // 2c-2 must lock devices in this same order.
+        deviceIds.sorted().forEach { id ->
             if (devices.findForUpdate(id)?.status != DeviceStatus.ENROLLED) throw InvalidInputException("device $id is not enrolled")
         }
         assignments.replace(missionId, deviceIds)
