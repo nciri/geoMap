@@ -68,6 +68,15 @@ class DeviceRepository(
 
     fun findAll(): List<Device> = jdbc.sql("SELECT * FROM device ORDER BY name, id").query { rs, _ -> map(rs) }.list()
 
+    // Locks the device row so a concurrent revoke cannot commit between this check and the assignment.
+    fun findForUpdate(id: UUID): Device? =
+        jdbc
+            .sql("SELECT * FROM device WHERE id = :id FOR UPDATE")
+            .param("id", id)
+            .query { rs, _ -> map(rs) }
+            .optional()
+            .orElse(null)
+
     fun updateStatus(
         id: UUID,
         status: DeviceStatus,

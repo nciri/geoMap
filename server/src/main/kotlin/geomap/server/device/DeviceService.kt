@@ -95,7 +95,7 @@ class DeviceService(
         if (actor.isAgent) throw ForbiddenException("only a human can assign devices")
         missions.editable(missionId)
         deviceIds.forEach { id ->
-            if (devices.find(id)?.status != DeviceStatus.ENROLLED) throw InvalidInputException("device $id is not enrolled")
+            if (devices.findForUpdate(id)?.status != DeviceStatus.ENROLLED) throw InvalidInputException("device $id is not enrolled")
         }
         assignments.replace(missionId, deviceIds)
         audit.record(
