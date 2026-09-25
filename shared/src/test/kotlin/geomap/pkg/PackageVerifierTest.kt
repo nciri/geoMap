@@ -40,6 +40,14 @@ class PackageVerifierTest {
 
     private fun flipped(index: Int) = packageBytes.copyOf().also { it[index] = (it[index].toInt() xor 1).toByte() }
 
+    // Rewrites the manifest and re-signs, so the result is validly signed but carries an altered manifest.
+    private fun rebuiltWith(mutate: (Manifest) -> Manifest): ByteArray {
+        val container = GmpContainer.decode(packageBytes)
+        val manifest = mutate(ManifestJson.decode(container.manifest))
+        val unsigned = GmpContainer.encodeUnsigned(ManifestJson.encode(manifest), container.payload)
+        return GmpContainer.appendSignature(unsigned, Ecdsa.sign(unsigned, TestKeys.ec.private))
+    }
+
     @Test
     fun `accepts a valid package`() {
         val accepted = assertIs<VerifyResult.Accepted>(PackageVerifier.verify(packageBytes, context()))
@@ -111,5 +119,28 @@ class PackageVerifierTest {
         val now = Instant.parse("2026-09-26T00:00:00Z")
         val throwingContext = VerifyContext("cert-a", throwingUnwrapper, TestKeys.ec.public, now, { null }, { true })
         assertEquals(Rejection.CORRUPTED, reasonOf(packageBytes, throwingContext))
+    }
+
+    @Test
+    fun `rejects an unsupported manifest format`() {
+        assertEquals(Rejection.MALFORMED, reasonOf(rebuiltWith { it.copy(format = 2) }, context()))
+    }
+
+    @Test
+    fun `rejects a payload algorithm other than A256GCM`() {
+        assertEquals(
+            Rejection.MALFORMED,
+            reasonOf(rebuiltWith { it.copy(payload = it.payload.copy(alg = "AES-128")) }, context()),
+        )
+    }
+
+    @Test
+    fun `rejects an unparseable validUntil`() {
+        assertEquals(Rejection.MALFORMED, reasonOf(rebuiltWith { it.copy(validUntil = "not-a-date") }, context()))
+    }
+
+    @Test
+    fun `reports corruption when the manifest's missionId no longer matches the payload's AAD`() {
+        assertEquals(Rejection.CORRUPTED, reasonOf(rebuiltWith { it.copy(missionId = "m-2") }, context()))
     }
 }
