@@ -47,6 +47,36 @@ class SymbolCatalogTest {
         assertEquals(5, catalog.search("", 5).size)
     }
 
+    @Test
+    fun `search lists no symbol that could never be placed`() {
+        val results = catalog.search("", 5000)
+        assertTrue(results.isNotEmpty())
+        results.forEach { symbol ->
+            val placeable =
+                when (symbol.geometry) {
+                    SymbolGeometry.POINT -> 1 in symbol.minPoints..symbol.maxPoints
+                    SymbolGeometry.LINE -> symbol.maxPoints >= 2
+                    SymbolGeometry.AREA -> symbol.maxPoints >= 3
+                }
+            assertTrue(placeable, "${symbol.basicId} ${symbol.name} cannot be placed: ${symbol.minPoints}..${symbol.maxPoints}")
+        }
+    }
+
+    @Test
+    fun `does not describe a category header with no placeable geometry`() {
+        // "Command and Control Lines" category header: symbol set Control Measure, entity code 110000, point geometry with 0..0 points.
+        // Found by probing MSLookup.getIDList(Version_APP6D) for basicId 25110000 (min=0, max=0) and rebuilding the full SIDC
+        // with SymbolID.setSymbolSet(..., 25) / setEntityCode(..., 110000) on a known-good template.
+        assertNull(catalog.describe("10032500001100000000"))
+    }
+
+    @Test
+    fun `does not describe an Area symbol whose bounds cannot form a polygon`() {
+        // "Retain" (Control Measure / Maneuver Areas / Battle Position): Area geometry but maxPoints = 2 (basicId 25151205),
+        // found the same way as the category header above; a Polygon needs at least 3 control points.
+        assertNull(catalog.describe("10032500001512050000"))
+    }
+
     private fun point() = mapOf("type" to "Point", "coordinates" to listOf(2.35, 48.85))
 
     private fun line(vararg lons: Double) = mapOf("type" to "LineString", "coordinates" to lons.map { listOf(it, 48.0) })

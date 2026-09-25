@@ -75,6 +75,14 @@ class SymbolCatalog {
                 "area" -> SymbolGeometry.AREA
                 else -> return null
             }
+        // Category headers (0..0 points) and undersized Area symbols (e.g. Circle, Rectangle) can never satisfy a GeoJSON shape.
+        val placeable =
+            when (kind) {
+                SymbolGeometry.POINT -> 1 in minPointCount..maxPointCount
+                SymbolGeometry.LINE -> maxPointCount >= 2
+                SymbolGeometry.AREA -> maxPointCount >= 3
+            }
+        if (!placeable) return null
         return SymbolInfo(
             basicId = basicSymbolID,
             name = name,
