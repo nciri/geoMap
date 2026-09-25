@@ -18,6 +18,7 @@ data class Manifest(
 @Serializable
 data class BasemapRef(
     val id: String,
+    /** Lowercase hex SHA-256 of the PMTiles file. */
     val sha256: String,
 )
 
@@ -30,6 +31,7 @@ data class PayloadInfo(
 
 @Serializable
 data class Recipient(
+    /** Lowercase hex SHA-256 of the DER-encoded device certificate, i.e. `Sha256.hex(cert.encoded)`. */
     val deviceCertSha256: String,
     val alg: String,
     val wrappedKey: String,

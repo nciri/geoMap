@@ -27,6 +27,7 @@ sealed interface VerifyResult {
 }
 
 class VerifyContext(
+    /** Lowercase hex SHA-256 of the DER-encoded device certificate, i.e. `Sha256.hex(cert.encoded)`. */
     val deviceCertSha256: String,
     val unwrapper: KeyUnwrapper,
     val serverSigningKey: PublicKey,
