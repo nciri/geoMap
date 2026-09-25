@@ -192,4 +192,35 @@ class FeatureApiTest : IntegrationTest() {
         create()
         mvc.get("/api/missions/$missionId") { with(planner()) }.andExpect { jsonPath("$.status") { value("DRAFT") } }
     }
+
+    private val flotLine = """{"type":"LineString","coordinates":[[2.0,48.0],[2.5,48.2],[3.0,48.1]]}"""
+
+    @Test
+    fun `places APP-6D graphics with their own geometry`() {
+        post("""{"kind":"APP6","geometry":$flotLine,"sidc":"10032500001401000000"}""").andExpect { status { isCreated() } }
+        post("""{"kind":"APP6","geometry":$polygon,"sidc":"10032500001512000000","modifiers":{"T":"BP1"}}""")
+            .andExpect { status { isCreated() } }
+    }
+
+    @Test
+    fun `rejects an APP-6D symbol drawn with the wrong geometry`() {
+        post("""{"kind":"APP6","geometry":$point,"sidc":"10032500001401000000"}""").andExpect {
+            status { isBadRequest() }
+            jsonPath("$.detail") { value("Forward Line of Troops must be drawn as a LineString") }
+        }
+        post("""{"kind":"APP6","geometry":$polygon,"sidc":"10031000001211000000"}""").andExpect { status { isBadRequest() } }
+        mvc.get(features()) { with(planner()) }.andExpect { jsonPath("$.length()") { value(0) } }
+    }
+
+    @Test
+    fun `rejects an unknown or non APP-6D symbol`() {
+        post("""{"kind":"APP6","geometry":$point,"sidc":"99999999999999999999"}""").andExpect { status { isBadRequest() } }
+        post("""{"kind":"APP6","geometry":$point,"sidc":"11031000001211000000"}""").andExpect { status { isBadRequest() } }
+    }
+
+    @Test
+    fun `rejects a modifier that does not apply to the symbol`() {
+        post("""{"kind":"APP6","geometry":$point,"sidc":"10031000001211000000","modifiers":{"ZZ":"x"}}""")
+            .andExpect { status { isBadRequest() } }
+    }
 }

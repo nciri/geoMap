@@ -4,6 +4,8 @@ import armyc2.c5isr.renderer.utilities.MSInfo
 import armyc2.c5isr.renderer.utilities.MSLookup
 import armyc2.c5isr.renderer.utilities.Modifiers
 import armyc2.c5isr.renderer.utilities.SymbolID
+import geomap.server.mission.GeoJsonGeometry
+import geomap.server.web.InvalidInputException
 import org.springframework.stereotype.Component
 
 enum class SymbolGeometry { POINT, LINE, AREA }
@@ -42,6 +44,28 @@ class SymbolCatalog {
             .take(limit)
             .toList()
     }
+
+    fun validate(
+        sidc: String?,
+        geometry: Map<String, Any?>,
+        modifiers: Map<String, String>?,
+    ): SymbolInfo {
+        if (sidc == null) invalid("an APP-6D symbol needs a SIDC")
+        val symbol = describe(sidc) ?: invalid("unknown APP-6D symbol: $sidc")
+        val expected =
+            when (symbol.geometry) {
+                SymbolGeometry.POINT -> "Point"
+                SymbolGeometry.LINE -> "LineString"
+                SymbolGeometry.AREA -> "Polygon"
+            }
+        if (geometry["type"] != expected) invalid("${symbol.name} must be drawn as a $expected")
+        val points = GeoJsonGeometry.controlPoints(geometry).size
+        if (points !in symbol.minPoints..symbol.maxPoints) invalid("${symbol.name} needs ${symbol.minPoints} to ${symbol.maxPoints} points")
+        modifiers?.keys?.firstOrNull { it !in symbol.modifiers }?.let { invalid("modifier $it does not apply to ${symbol.name}") }
+        return symbol
+    }
+
+    private fun invalid(message: String): Nothing = throw InvalidInputException(message)
 
     private fun MSInfo.toSymbolInfo(): SymbolInfo? {
         val kind =

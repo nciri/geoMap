@@ -1,6 +1,7 @@
 package geomap.server.mission
 
 import geomap.server.security.Actor
+import geomap.server.symbology.SymbolCatalog
 import geomap.server.web.ConflictException
 import geomap.server.web.ForbiddenException
 import geomap.server.web.InvalidInputException
@@ -25,6 +26,7 @@ class FeatureService(
     private val features: FeatureRepository,
     private val missions: MissionService,
     private val clock: Clock,
+    private val symbols: SymbolCatalog,
 ) {
     fun list(missionId: UUID): List<Feature> {
         missions.get(missionId)
@@ -159,7 +161,7 @@ class FeatureService(
         if (input.name.length > 200) invalid("name must be at most 200 characters")
         if (input.description.length > 4000) invalid("description must be at most 4000 characters")
         when (input.kind) {
-            FeatureKind.APP6 -> if (input.sidc == null || !SIDC.matches(input.sidc)) invalid("an APP-6 symbol needs a 20 digit SIDC")
+            FeatureKind.APP6 -> symbols.validate(input.sidc, input.geometry, input.modifiers)
             FeatureKind.GENERIC -> if (input.sidc != null || input.modifiers != null) invalid("a generic object has no SIDC or modifiers")
         }
         input.style?.get("radiusMeters")?.let { radius ->
@@ -170,8 +172,4 @@ class FeatureService(
     }
 
     private fun invalid(message: String): Nothing = throw InvalidInputException(message)
-
-    private companion object {
-        val SIDC = Regex("^\\d{20}$")
-    }
 }
