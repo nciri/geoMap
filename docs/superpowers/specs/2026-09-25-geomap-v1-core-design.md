@@ -135,7 +135,7 @@ magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chi
   "basemap": { "id": "zone-nord", "sha256": "…" },
   "payload": { "alg": "A256GCM", "iv": "…", "sha256": "…" },
   "recipients": [
-    { "deviceCertSha256": "…", "alg": "RSA-OAEP-256", "wrappedKey": "…" }
+    { "deviceCertSha256": "…", "alg": "RSA-OAEP-SHA256-MGF1SHA1", "wrappedKey": "…" }
   ]
 }
 ```
@@ -148,7 +148,7 @@ magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chi
 
 **Signature** : ECDSA P-256 du serveur, sur `manifeste || charge chiffrée`.
 
-**Choix de RSA-OAEP pour l'emballage de clé :** l'accord de clé ECDH dans l'Android Keystore n'est disponible qu'à partir de l'API 31. Avec Android 10 minimum, le terminal utilise une paire RSA-3072 dédiée au déchiffrement (OAEP SHA-256), distincte de la paire servant au certificat mTLS.
+**Choix de RSA-OAEP pour l'emballage de clé :** l'accord de clé ECDH dans l'Android Keystore n'est disponible qu'à partir de l'API 31. Avec Android 10 minimum, le terminal utilise une paire RSA-3072 dédiée au déchiffrement (OAEP, empreinte SHA-256, MGF1-SHA1 : seul MGF1 accepté par l'Android Keystore avant l'API 34), distincte de la paire servant au certificat mTLS.
 
 ### 6.3 Règles de vérification sur le terminal
 
