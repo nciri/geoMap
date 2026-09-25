@@ -29,7 +29,7 @@ abstract class IntegrationTest {
 
     @BeforeEach
     fun setUpMvc() {
-        jdbc.sql("TRUNCATE audit_event, feature, mission, basemap").update()
+        jdbc.sql("TRUNCATE audit_event, assignment, feature, mission, basemap, device").update()
         mvc =
             MockMvcBuilders
                 .webAppContextSetup(context)
