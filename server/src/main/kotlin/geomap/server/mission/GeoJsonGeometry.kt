@@ -57,4 +57,17 @@ object GeoJsonGeometry {
     }
 
     private fun invalid(message: String): Nothing = throw InvalidInputException(message)
+
+    fun controlPoints(geometry: Map<String, Any?>): List<Pair<Double, Double>> {
+        val coordinates = geometry["coordinates"]
+        return when (geometry["type"]) {
+            "Point" -> listOf(position(coordinates))
+            "LineString" -> positions(coordinates, minSize = 2)
+            "Polygon" -> {
+                val rings = coordinates as? List<*> ?: invalid("coordinates must be an array")
+                positions(rings.firstOrNull(), minSize = 4).dropLast(1)
+            }
+            else -> invalid("unsupported geometry type: ${geometry["type"]}")
+        }
+    }
 }

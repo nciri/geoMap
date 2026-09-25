@@ -81,4 +81,11 @@ class GeoJsonGeometryTest {
     fun `rejects missing coordinates`() {
         assertFailsWith<InvalidInputException> { GeoJsonGeometry.validate(mapOf("type" to "Point")) }
     }
+
+    @Test
+    fun `control points drop the closing position of a polygon`() {
+        assertEquals(4, GeoJsonGeometry.controlPoints(geometry("Polygon", listOf(square))).size)
+        assertEquals(listOf(2.35 to 48.85), GeoJsonGeometry.controlPoints(geometry("Point", listOf(2.35, 48.85))))
+        assertEquals(2, GeoJsonGeometry.controlPoints(geometry("LineString", listOf(listOf(2.0, 48.0), listOf(3, 49)))).size)
+    }
 }
