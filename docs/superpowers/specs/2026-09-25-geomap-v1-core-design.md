@@ -120,7 +120,7 @@ Rôles Keycloak : `planificateur` (missions) et `administrateur` (terminaux, fon
 Conteneur binaire :
 
 ```
-magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chiffrée | signature
+"GMP1" | longueur manifeste (int32) | manifeste (JSON UTF-8) | longueur charge (int32) | charge chiffrée | longueur signature (uint16) | signature
 ```
 
 **Manifeste (en clair, signé)** :
@@ -146,7 +146,7 @@ magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chi
 - `icons/<hash>.png` : images des symboles APP-6D ponctuels ;
 - `summary.md` : synthèse de mission (saisie à la main en V1, générée par l'IA au sous-projet 2).
 
-**Signature** : ECDSA P-256 du serveur, sur `manifeste || charge chiffrée`.
+**Signature** : ECDSA P-256 du serveur, sur tous les octets qui précèdent la longueur de signature (en-tête, manifeste, charge chiffrée). Signer l'en-tête empêche de déplacer la frontière entre manifeste et charge.
 
 **Choix de RSA-OAEP pour l'emballage de clé :** l'accord de clé ECDH dans l'Android Keystore n'est disponible qu'à partir de l'API 31. Avec Android 10 minimum, le terminal utilise une paire RSA-3072 dédiée au déchiffrement (OAEP, empreinte SHA-256, MGF1-SHA1 : seul MGF1 accepté par l'Android Keystore avant l'API 34), distincte de la paire servant au certificat mTLS.
 
