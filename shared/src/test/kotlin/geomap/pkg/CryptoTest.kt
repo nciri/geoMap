@@ -84,4 +84,13 @@ class CryptoTest {
         assertFalse(Ecdsa.verify(data, signature, TestKeys.ecOther.public))
         assertFalse(Ecdsa.verify(data, byteArrayOf(1, 2, 3), TestKeys.ec.public))
     }
+
+    @Test
+    fun `ecdsa rejects malformed DER without throwing`() {
+        val signature = Ecdsa.sign(data, TestKeys.ec.private)
+        // Truncated signature (missing last byte)
+        assertFalse(Ecdsa.verify(data, signature.copyOf(signature.size - 1), TestKeys.ec.public))
+        // DER header claiming a longer length than present
+        assertFalse(Ecdsa.verify(data, byteArrayOf(0x30, 0x7f, 0x02, 0x01, 0x01), TestKeys.ec.public))
+    }
 }

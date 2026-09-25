@@ -130,5 +130,8 @@ object Ecdsa {
             }
         } catch (e: SignatureException) {
             false
+        } catch (e: RuntimeException) {
+            // Android crypto providers may throw non-SignatureException (e.g. ArrayIndexOutOfBoundsException) on malformed DER.
+            false
         }
 }
