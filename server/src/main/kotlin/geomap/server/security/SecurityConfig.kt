@@ -16,6 +16,8 @@ class SecurityConfig {
         http {
             authorizeHttpRequests {
                 authorize("/actuator/health", permitAll)
+                // Scraped by Prometheus inside the cluster; exposure outside is blocked by the ALIAS network policy.
+                authorize("/actuator/prometheus", permitAll)
                 authorize(anyRequest, authenticated)
             }
             oauth2ResourceServer {
