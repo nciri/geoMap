@@ -1,3 +1,7 @@
+geomap:
+  signing:
+    private-key-pem: ${GEOMAP_SIGNING_PRIVATE_KEY_PEM:}
+    public-key-pem: ${GEOMAP_SIGNING_PUBLIC_KEY_PEM:}
 spring:
   application:
     name: geomap-server

@@ -30,6 +30,7 @@ dependencies {
     // springdoc 3.x is the line for Spring Boot 4.
     implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:3.0.0")
     implementation("io.github.missioncommand:mil-sym-java:2.9.6")
+    implementation("geomap:geomap-shared:0.1.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-webmvc-test")
     testImplementation("org.springframework.boot:spring-boot-testcontainers")

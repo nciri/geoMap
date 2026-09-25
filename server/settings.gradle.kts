@@ -12,3 +12,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "geomap-server"
+
+includeBuild("../shared")
