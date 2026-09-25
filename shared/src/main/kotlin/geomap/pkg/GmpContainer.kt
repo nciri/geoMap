@@ -24,6 +24,9 @@ class GmpContainer(
         // Bounds allocations when parsing untrusted files.
         internal const val MAX_SIGNATURE = 512
 
+        // Check file size against this before reading it into memory.
+        const val MAX_FILE_SIZE = 4 + 4 + MAX_MANIFEST + 4 + MAX_PAYLOAD + 2 + MAX_SIGNATURE
+
         fun encodeUnsigned(
             manifest: ByteArray,
             payload: ByteArray,
@@ -59,13 +62,16 @@ class GmpContainer(
                 require(magic.contentEquals(MAGIC)) { "bad magic" }
                 val manifestLength = input.readInt()
                 require(manifestLength in 1..MAX_MANIFEST) { "bad manifest length" }
+                require(manifestLength <= input.available()) { "manifest length exceeds available bytes" }
                 val manifest = ByteArray(manifestLength).also(input::readFully)
                 val payloadLength = input.readInt()
                 require(payloadLength in 0..MAX_PAYLOAD) { "bad payload length" }
+                require(payloadLength <= input.available()) { "payload length exceeds available bytes" }
                 val payload = ByteArray(payloadLength).also(input::readFully)
                 val signedLength = MAGIC.size + 4 + manifestLength + 4 + payloadLength
                 val signatureLength = input.readUnsignedShort()
                 require(signatureLength in 1..MAX_SIGNATURE) { "bad signature length" }
+                require(signatureLength <= input.available()) { "signature length exceeds available bytes" }
                 val signature = ByteArray(signatureLength).also(input::readFully)
                 require(input.read() == -1) { "trailing bytes" }
                 return GmpContainer(manifest, payload, signature, bytes.copyOf(signedLength))

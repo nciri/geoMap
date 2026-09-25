@@ -49,4 +49,17 @@ class GmpContainerTest {
         }
         assertFailsWith<IllegalArgumentException> { GmpContainer.decode(out.toByteArray()) }
     }
+
+    @Test
+    fun `rejects a payload length larger than the bytes actually present, without allocating it`() {
+        val out = ByteArrayOutputStream()
+        DataOutputStream(out).use {
+            it.write("GMP1".encodeToByteArray())
+            it.writeInt(manifest.size)
+            it.write(manifest)
+            it.writeInt(64 * 1024 * 1024)
+            it.write(byteArrayOf(1, 2, 3))
+        }
+        assertFailsWith<IllegalArgumentException> { GmpContainer.decode(out.toByteArray()) }
+    }
 }
