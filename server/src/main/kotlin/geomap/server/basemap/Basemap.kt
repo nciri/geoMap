@@ -11,6 +11,7 @@ data class Basemap(
     val id: String,
     val name: String,
     val sizeBytes: Long,
+    val objectKey: String,
     val sha256: String,
     val signature: String,
     val createdBy: String,
@@ -25,12 +26,13 @@ class BasemapRepository(
         jdbc
             .sql(
                 """
-                INSERT INTO basemap (id, name, size_bytes, sha256, signature, created_by, created_at)
-                VALUES (:id, :name, :sizeBytes, :sha256, :signature, :createdBy, :createdAt)
+                INSERT INTO basemap (id, name, size_bytes, object_key, sha256, signature, created_by, created_at)
+                VALUES (:id, :name, :sizeBytes, :objectKey, :sha256, :signature, :createdBy, :createdAt)
                 """.trimIndent(),
             ).param("id", basemap.id)
             .param("name", basemap.name)
             .param("sizeBytes", basemap.sizeBytes)
+            .param("objectKey", basemap.objectKey)
             .param("sha256", basemap.sha256)
             .param("signature", basemap.signature)
             .param("createdBy", basemap.createdBy)
@@ -53,6 +55,7 @@ class BasemapRepository(
             id = rs.getString("id"),
             name = rs.getString("name"),
             sizeBytes = rs.getLong("size_bytes"),
+            objectKey = rs.getString("object_key"),
             sha256 = rs.getString("sha256"),
             signature = rs.getString("signature"),
             createdBy = rs.getString("created_by"),

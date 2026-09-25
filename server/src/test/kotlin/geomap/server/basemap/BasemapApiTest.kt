@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.put
 import org.springframework.test.web.servlet.request.RequestPostProcessor
 import java.nio.file.Files
+import java.util.concurrent.Callable
+import java.util.concurrent.Executors
 import kotlin.random.Random
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -22,6 +24,9 @@ import kotlin.test.assertTrue
 class BasemapApiTest : IntegrationTest() {
     @Autowired
     private lateinit var store: ObjectStore
+
+    @Autowired
+    private lateinit var basemaps: BasemapRepository
 
     @Autowired
     private lateinit var signingKey: ServerSigningKey
@@ -39,7 +44,7 @@ class BasemapApiTest : IntegrationTest() {
         content = bytes
     }
 
-    private fun stored(id: String) = store.get(BasemapService.objectKey(id)).use { it.readBytes() }
+    private fun stored(id: String) = store.get(basemaps.find(id)!!.objectKey).use { it.readBytes() }
 
     @Test
     fun `an administrator registers a signed basemap`() {
@@ -94,5 +99,28 @@ class BasemapApiTest : IntegrationTest() {
                 "$.length()",
             ),
         )
+    }
+
+    @Test
+    fun `concurrent uploads of the same id register exactly one basemap whose signature matches its stored bytes`() {
+        val contents = listOf(Random(11).nextBytes(200_000), Random(13).nextBytes(200_000))
+        val pool = Executors.newFixedThreadPool(2)
+        val tasks =
+            contents.map { bytes ->
+                Callable { upload(id = "zone-est", bytes = bytes).andReturn().response.status }
+            }
+        val statuses =
+            try {
+                pool.invokeAll(tasks).map { it.get() }.sorted()
+            } finally {
+                pool.shutdown()
+            }
+        assertEquals(listOf(201, 409), statuses)
+
+        val row = basemaps.find("zone-est")!!
+        val file = Files.createTempFile("zone-est", ".pmtiles")
+        Files.write(file, store.get(row.objectKey).use { it.readBytes() })
+        assertEquals(Sha256.hex(Files.readAllBytes(file)), row.sha256)
+        assertTrue(BasemapSignature.verify(file, unb64(row.signature), signingKey.publicKey))
     }
 }

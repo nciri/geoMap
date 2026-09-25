@@ -41,7 +41,9 @@ class MissionValidationTest : IntegrationTest() {
 
     @BeforeEach
     fun createCompleteMission() {
-        basemaps.insert(Basemap("zone-nord", "Zone Nord", 1, "0".repeat(64), "c2ln", "root", Instant.now()))
+        basemaps.insert(
+            Basemap("zone-nord", "Zone Nord", 1, "basemaps/zone-nord/seed.pmtiles", "0".repeat(64), "c2ln", "root", Instant.now()),
+        )
         missionId = createMission("""{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}""")
     }
 

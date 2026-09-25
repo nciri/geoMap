@@ -11,11 +11,13 @@ import geomap.server.storage.ObjectStore
 import geomap.server.web.ConflictException
 import geomap.server.web.ForbiddenException
 import geomap.server.web.InvalidInputException
+import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
 import java.time.Clock
+import java.util.UUID
 
 @Service
 class BasemapService(
@@ -39,23 +41,26 @@ class BasemapService(
         val trimmed = name.trim()
         if (trimmed.length !in 1..200) throw InvalidInputException("name must be 1 to 200 characters")
         if (size <= 0) throw InvalidInputException("a non-empty body with a Content-Length is required")
-        // ponytail: check-then-write race between two admins uploading the same id; the primary key rejects the second row.
         if (basemaps.find(id) != null) throw ConflictException("basemap $id already exists")
 
+        // Each upload gets its own key: a lost race leaves one orphaned object, never a mismatched row.
+        val objectKey = "basemaps/$id/${UUID.randomUUID()}.pmtiles"
         val digest = MessageDigest.getInstance("SHA-256")
-        store.put(objectKey(id), DigestInputStream(content, digest), size, "application/vnd.pmtiles")
+        store.put(objectKey, DigestInputStream(content, digest), size, "application/vnd.pmtiles")
         val sha256 = digest.digest()
         // Same scheme as shared BasemapSignature: ECDSA over the file's SHA-256 digest.
         val now = clock.instant()
-        val basemap = Basemap(id, trimmed, size, sha256.toHex(), b64(Ecdsa.sign(sha256, signingKey.privateKey)), actor.user, now)
-        basemaps.insert(basemap)
+        val basemap = Basemap(id, trimmed, size, objectKey, sha256.toHex(), b64(Ecdsa.sign(sha256, signingKey.privateKey)), actor.user, now)
+        try {
+            basemaps.insert(basemap)
+        } catch (e: DuplicateKeyException) {
+            throw ConflictException("basemap $id already exists")
+        }
         audit.record(AuditEvent(now, actor.user, actor.agent, "basemap.upload", "basemap:$id", mapOf("sizeBytes" to size)))
         return basemap
     }
 
     companion object {
         private val ID = Regex("^[a-z0-9-]{1,64}$")
-
-        fun objectKey(id: String) = "basemaps/$id.pmtiles"
     }
 }
