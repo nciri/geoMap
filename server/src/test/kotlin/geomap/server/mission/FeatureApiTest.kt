@@ -223,4 +223,10 @@ class FeatureApiTest : IntegrationTest() {
         post("""{"kind":"APP6","geometry":$point,"sidc":"10031000001211000000","modifiers":{"ZZ":"x"}}""")
             .andExpect { status { isBadRequest() } }
     }
+
+    @Test
+    fun `rejects a symbol the catalogue accepts but cannot actually be rendered`() {
+        post("""{"kind":"APP6","geometry":$point,"sidc":"10991099991211009999"}""").andExpect { status { isBadRequest() } }
+        mvc.get(features()) { with(planner()) }.andExpect { jsonPath("$.length()") { value(0) } }
+    }
 }

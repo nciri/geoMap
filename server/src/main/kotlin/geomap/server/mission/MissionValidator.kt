@@ -1,8 +1,6 @@
 package geomap.server.mission
 
-import geomap.server.symbology.RenderBand
 import geomap.server.symbology.SymbolCatalog
-import geomap.server.symbology.SymbolGeometry
 import geomap.server.symbology.SymbolRenderer
 import geomap.server.web.InvalidInputException
 import org.springframework.security.access.prepost.PreAuthorize
@@ -65,13 +63,7 @@ class MissionValidator(
     private fun renderingProblem(feature: Feature): String? =
         try {
             val symbol = catalog.validate(feature.sidc, feature.geometry, feature.modifiers)
-            val sidc = feature.sidc!!
-            val modifiers = feature.modifiers.orEmpty()
-            if (symbol.geometry == SymbolGeometry.POINT) {
-                renderer.icon(sidc, modifiers, 64)
-            } else {
-                renderer.graphic(sidc, GeoJsonGeometry.controlPoints(feature.geometry), modifiers, RenderBand.MID)
-            }
+            renderer.verify(symbol, feature.sidc!!, feature.geometry, feature.modifiers.orEmpty())
             null
         } catch (e: InvalidInputException) {
             e.message

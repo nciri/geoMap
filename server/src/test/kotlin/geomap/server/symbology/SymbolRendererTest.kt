@@ -74,6 +74,22 @@ class SymbolRendererTest {
     }
 
     @Test
+    fun `verify throws for a symbol that cannot actually render`() {
+        val sidc = "10991099991211009999"
+        val symbol = SymbolInfo("10121100", "Infantry", "", SymbolGeometry.POINT, 1, 1, setOf("T"))
+        val point = mapOf("type" to "Point", "coordinates" to listOf(2.35, 48.85))
+        assertFailsWith<InvalidInputException> { renderer.verify(symbol, sidc, point, emptyMap()) }
+    }
+
+    @Test
+    fun `verify passes for a symbol that renders at every zoom band`() {
+        val sidc = "10032500001401000000"
+        val symbol = SymbolInfo("25140100", "Forward Line of Troops", "", SymbolGeometry.LINE, 2, Int.MAX_VALUE, emptySet())
+        val geometry = mapOf("type" to "LineString", "coordinates" to line.map { (lon, lat) -> listOf(lon, lat) })
+        renderer.verify(symbol, sidc, geometry, emptyMap())
+    }
+
+    @Test
     fun `concurrent renders all succeed`() {
         val pool = Executors.newFixedThreadPool(8)
         try {

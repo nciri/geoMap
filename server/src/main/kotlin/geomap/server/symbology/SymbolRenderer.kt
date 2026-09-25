@@ -4,6 +4,7 @@ import armyc2.c5isr.renderer.MilStdIconRenderer
 import armyc2.c5isr.renderer.utilities.MilStdAttributes
 import armyc2.c5isr.renderer.utilities.Modifiers
 import armyc2.c5isr.web.render.WebRenderer
+import geomap.server.mission.GeoJsonGeometry
 import geomap.server.web.InvalidInputException
 import org.springframework.stereotype.Component
 import tools.jackson.databind.ObjectMapper
@@ -41,6 +42,22 @@ class SymbolRenderer(
 ) {
     // ponytail: mil-sym keeps static renderer state, so one global lock; use a pool of isolated renderers if throughput matters.
     private val lock = Any()
+
+    // Catalogue placement rules alone do not guarantee mil-sym can actually draw a symbol (e.g. it needs a modifier
+    // to be set); render it for real at every zoom band before it is accepted, so a save cannot outrun validation.
+    fun verify(
+        symbol: SymbolInfo,
+        sidc: String,
+        geometry: Map<String, Any?>,
+        modifiers: Map<String, String>,
+    ) {
+        if (symbol.geometry == SymbolGeometry.POINT) {
+            icon(sidc, modifiers, 64)
+        } else {
+            val controlPoints = GeoJsonGeometry.controlPoints(geometry)
+            RenderBand.entries.forEach { band -> graphic(sidc, controlPoints, modifiers, band) }
+        }
+    }
 
     fun icon(
         sidc: String,

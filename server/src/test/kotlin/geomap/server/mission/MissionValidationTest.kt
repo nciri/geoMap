@@ -109,7 +109,7 @@ class MissionValidationTest : IntegrationTest() {
                 name = "",
                 description = "",
                 style = null,
-                sidc = "10039999999999999999",
+                sidc = "10991099991211009999",
                 modifiers = null,
                 origin = FeatureOrigin.HUMAN,
                 suggestionStatus = null,
