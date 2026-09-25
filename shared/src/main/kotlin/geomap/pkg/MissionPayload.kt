@@ -2,9 +2,9 @@ package geomap.pkg
 
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.io.IOException
 import java.io.InputStream
 import java.util.zip.ZipEntry
-import java.util.zip.ZipException
 import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 
@@ -67,7 +67,7 @@ object PayloadCodec {
                     }
                 }
             }
-        } catch (e: ZipException) {
+        } catch (e: IOException) {
             throw IllegalArgumentException("invalid archive", e)
         }
         require(features.keys == ZoomBand.entries.toSet()) { "missing zoom band" }

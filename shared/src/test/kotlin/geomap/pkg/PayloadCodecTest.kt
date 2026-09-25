@@ -96,4 +96,11 @@ class PayloadCodecTest {
     fun `rejects bytes that are not a zip`() {
         assertFailsWith<IllegalArgumentException> { PayloadCodec.decode(byteArrayOf(1, 2, 3)) }
     }
+
+    @Test
+    fun `rejects a truncated archive`() {
+        val encoded = PayloadCodec.encode(payload)
+        val truncated = encoded.copyOf(40)
+        assertFailsWith<IllegalArgumentException> { PayloadCodec.decode(truncated) }
+    }
 }
