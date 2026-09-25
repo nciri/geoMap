@@ -111,4 +111,14 @@ class SymbolCatalogTest {
     fun `rejects a modifier that does not apply`() {
         assertFailsWith<InvalidInputException> { catalog.validate("10031000001211000000", point(), mapOf("ZZ" to "x")) }
     }
+
+    @Test
+    fun `caps control points of a symbol with no natural upper bound`() {
+        // FLOT has maxPoints = Int.MAX_VALUE; capped to bound time spent holding the render lock (SymbolCatalog.MAX_CONTROL_POINTS).
+        val lons = DoubleArray(2000) { -10.0 + it * 0.001 }
+        assertEquals(SymbolGeometry.LINE, catalog.validate("10032500001401000000", line(*lons), null).geometry)
+        val tooMany = DoubleArray(2001) { -10.0 + it * 0.001 }
+        val error = assertFailsWith<InvalidInputException> { catalog.validate("10032500001401000000", line(*tooMany), null) }
+        assertEquals("Forward Line of Troops needs 2 to 2000 points", error.message)
+    }
 }

@@ -7,6 +7,7 @@ import armyc2.c5isr.renderer.utilities.SymbolID
 import geomap.server.mission.GeoJsonGeometry
 import geomap.server.web.InvalidInputException
 import org.springframework.stereotype.Component
+import kotlin.math.min
 
 enum class SymbolGeometry { POINT, LINE, AREA }
 
@@ -60,7 +61,8 @@ class SymbolCatalog {
             }
         if (geometry["type"] != expected) invalid("${symbol.name} must be drawn as a $expected")
         val points = GeoJsonGeometry.controlPoints(geometry).size
-        if (points !in symbol.minPoints..symbol.maxPoints) invalid("${symbol.name} needs ${symbol.minPoints} to ${symbol.maxPoints} points")
+        val effectiveMax = min(symbol.maxPoints, MAX_CONTROL_POINTS)
+        if (points !in symbol.minPoints..effectiveMax) invalid("${symbol.name} needs ${symbol.minPoints} to $effectiveMax points")
         modifiers?.keys?.firstOrNull { it !in symbol.modifiers }?.let { invalid("modifier $it does not apply to ${symbol.name}") }
         return symbol
     }
@@ -97,5 +99,8 @@ class SymbolCatalog {
 
     companion object {
         val APP6D_SIDC = Regex("^10\\d{18}$")
+
+        // Bounds time spent holding SymbolRenderer's global render lock; a 20 000-point FLOT would hold it ~1.2s.
+        const val MAX_CONTROL_POINTS = 2000
     }
 }
