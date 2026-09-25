@@ -1,0 +1,138 @@
+package geomap.server.mission
+
+import geomap.server.audit.AuditEvent
+import geomap.server.audit.AuditRepository
+import geomap.server.security.Actor
+import geomap.server.web.ConflictException
+import geomap.server.web.ForbiddenException
+import geomap.server.web.InvalidInputException
+import geomap.server.web.NotFoundException
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.Clock
+import java.time.Instant
+import java.util.UUID
+
+data class MissionInput(
+    val name: String,
+    val basemapId: String? = null,
+    val validUntil: Instant? = null,
+)
+
+data class MissionPatch(
+    val name: String? = null,
+    val basemapId: String? = null,
+    val validUntil: Instant? = null,
+)
+
+@Service
+class MissionService(
+    private val missions: MissionRepository,
+    private val audit: AuditRepository,
+    private val clock: Clock,
+) {
+    @Transactional
+    fun create(
+        actor: Actor,
+        input: MissionInput,
+    ): Mission {
+        val now = clock.instant()
+        val mission =
+            Mission(
+                id = UUID.randomUUID(),
+                name = validName(input.name),
+                status = MissionStatus.DRAFT,
+                basemapId = input.basemapId?.let(::validBasemapId),
+                validUntil = input.validUntil?.let { validExpiry(it, now) },
+                createdBy = actor.user,
+                updatedBy = actor.user,
+                createdAt = now,
+                updatedAt = now,
+            )
+        missions.insert(mission)
+        record(actor, "mission.create", "mission:${mission.id}")
+        return mission
+    }
+
+    fun list(): List<Mission> = missions.findAll()
+
+    fun get(id: UUID): Mission = missions.find(id) ?: throw NotFoundException("mission not found")
+
+    @Transactional
+    fun update(
+        actor: Actor,
+        id: UUID,
+        patch: MissionPatch,
+    ): Mission {
+        val current = editable(id)
+        val now = clock.instant()
+        val updated =
+            current.copy(
+                name = patch.name?.let(::validName) ?: current.name,
+                basemapId = patch.basemapId?.let(::validBasemapId) ?: current.basemapId,
+                validUntil = patch.validUntil?.let { validExpiry(it, now) } ?: current.validUntil,
+            )
+        touch(actor, updated, now)
+        val fields = listOfNotNull(patch.name?.let { "name" }, patch.basemapId?.let { "basemapId" }, patch.validUntil?.let { "validUntil" })
+        record(actor, "mission.update", "mission:$id", mapOf("fields" to fields))
+        return get(id)
+    }
+
+    @Transactional
+    fun delete(
+        actor: Actor,
+        id: UUID,
+    ) {
+        if (actor.isAgent) throw ForbiddenException("agents cannot delete missions")
+        if (get(id).status != MissionStatus.DRAFT) throw ConflictException("only draft missions can be deleted")
+        missions.delete(id)
+        record(actor, "mission.delete", "mission:$id")
+    }
+
+    fun editable(id: UUID): Mission {
+        val mission = get(id)
+        if (mission.status == MissionStatus.WITHDRAWN) throw ConflictException("mission is withdrawn")
+        return mission
+    }
+
+    // Any change sends the mission back to draft until it is published again (spec §5.3).
+    fun touch(
+        actor: Actor,
+        mission: Mission,
+        now: Instant,
+    ) {
+        missions.update(mission.copy(status = MissionStatus.DRAFT, updatedBy = actor.user, updatedAt = now))
+    }
+
+    fun record(
+        actor: Actor,
+        action: String,
+        target: String,
+        details: Map<String, Any?> = emptyMap(),
+    ) {
+        audit.record(AuditEvent(clock.instant(), actor.user, actor.agent, action, target, details))
+    }
+
+    private fun validName(name: String): String {
+        val trimmed = name.trim()
+        if (trimmed.length !in 1..200) throw InvalidInputException("name must be 1 to 200 characters")
+        return trimmed
+    }
+
+    private fun validBasemapId(id: String): String {
+        if (!BASEMAP_ID.matches(id)) throw InvalidInputException("basemapId must match ${BASEMAP_ID.pattern}")
+        return id
+    }
+
+    private fun validExpiry(
+        validUntil: Instant,
+        now: Instant,
+    ): Instant {
+        if (!validUntil.isAfter(now)) throw InvalidInputException("validUntil must be in the future")
+        return validUntil
+    }
+
+    private companion object {
+        val BASEMAP_ID = Regex("^[a-z0-9-]{1,64}$")
+    }
+}
