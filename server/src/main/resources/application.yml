@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: geomap-server
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
