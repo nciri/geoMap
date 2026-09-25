@@ -90,6 +90,10 @@ object RsaOaep {
 }
 
 // Lets the device keep its private key inside the Android Keystore.
+
+/**
+ * Implementations should throw [java.security.GeneralSecurityException] on failure.
+ */
 fun interface KeyUnwrapper {
     fun unwrap(wrapped: ByteArray): ByteArray
 }

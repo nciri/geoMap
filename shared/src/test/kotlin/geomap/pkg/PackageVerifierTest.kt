@@ -104,4 +104,12 @@ class PackageVerifierTest {
     fun `reports corruption when the key cannot be unwrapped`() {
         assertEquals(Rejection.CORRUPTED, reasonOf(packageBytes, context(privateKey = TestKeys.rsaOther.private)))
     }
+
+    @Test
+    fun `reports corruption when the key unwrapper throws a runtime failure`() {
+        val throwingUnwrapper = KeyUnwrapper { throw java.security.ProviderException("keystore") }
+        val now = Instant.parse("2026-09-26T00:00:00Z")
+        val throwingContext = VerifyContext("cert-a", throwingUnwrapper, TestKeys.ec.public, now, { null }, { true })
+        assertEquals(Rejection.CORRUPTED, reasonOf(packageBytes, throwingContext))
+    }
 }

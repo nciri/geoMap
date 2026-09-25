@@ -80,6 +80,9 @@ object PackageVerifier {
             VerifyResult.Rejected(Rejection.CORRUPTED)
         } catch (e: IllegalArgumentException) {
             VerifyResult.Rejected(Rejection.CORRUPTED)
+        } catch (e: RuntimeException) {
+            // Keystore providers may throw ProviderException (a RuntimeException) instead of GeneralSecurityException.
+            VerifyResult.Rejected(Rejection.CORRUPTED)
         }
     }
 }
