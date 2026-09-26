@@ -49,4 +49,10 @@ class MissionController(
         @PathVariable id: UUID,
         authentication: Authentication,
     ) = service.delete(Actor.of(authentication), id)
+
+    @PostMapping("/{id}/withdraw")
+    fun withdraw(
+        @PathVariable id: UUID,
+        authentication: Authentication,
+    ): Mission = service.withdraw(Actor.of(authentication), id)
 }

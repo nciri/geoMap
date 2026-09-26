@@ -2,6 +2,7 @@ package geomap.server.mission
 
 import geomap.server.audit.AuditEvent
 import geomap.server.audit.AuditRepository
+import geomap.server.publication.MissionVersionRepository
 import geomap.server.security.Actor
 import geomap.server.web.ConflictException
 import geomap.server.web.ForbiddenException
@@ -30,6 +31,7 @@ class MissionService(
     private val missions: MissionRepository,
     private val audit: AuditRepository,
     private val clock: Clock,
+    private val versions: MissionVersionRepository,
 ) {
     @Transactional
     fun create(
@@ -86,9 +88,22 @@ class MissionService(
         id: UUID,
     ) {
         if (actor.isAgent) throw ForbiddenException("agents cannot delete missions")
+        if (versions.exists(id)) throw ConflictException("a published mission cannot be deleted; withdraw it instead")
         if (get(id).status != MissionStatus.DRAFT) throw ConflictException("only draft missions can be deleted")
         missions.delete(id)
         record(actor, "mission.delete", "mission:$id")
+    }
+
+    @Transactional
+    fun withdraw(
+        actor: Actor,
+        id: UUID,
+    ): Mission {
+        if (actor.isAgent) throw ForbiddenException("only a human can withdraw a mission")
+        val mission = editable(id)
+        missions.update(mission.copy(status = MissionStatus.WITHDRAWN, updatedBy = actor.user, updatedAt = clock.instant()))
+        record(actor, "mission.withdraw", "mission:$id")
+        return get(id)
     }
 
     fun editable(id: UUID): Mission {

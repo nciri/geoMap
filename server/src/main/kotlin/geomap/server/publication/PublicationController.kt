@@ -1,7 +1,11 @@
 package geomap.server.publication
 
 import geomap.server.security.Actor
+import org.springframework.http.ContentDisposition
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.Authentication
 import org.springframework.web.bind.annotation.GetMapping
@@ -29,4 +33,18 @@ class PublicationController(
     fun versions(
         @PathVariable missionId: UUID,
     ): List<PublicationView> = service.versions(missionId)
+
+    @GetMapping("/package")
+    fun export(
+        @PathVariable missionId: UUID,
+        authentication: Authentication,
+    ): ResponseEntity<ByteArray> {
+        val (version, bytes) = service.export(Actor.of(authentication), missionId)
+        val disposition = ContentDisposition.attachment().filename("$missionId-v${version.number}.gmp").build()
+        return ResponseEntity
+            .ok()
+            .contentType(MediaType.APPLICATION_OCTET_STREAM)
+            .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
+            .body(bytes)
+    }
 }

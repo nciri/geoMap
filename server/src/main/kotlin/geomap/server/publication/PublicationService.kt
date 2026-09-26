@@ -17,6 +17,7 @@ import geomap.server.mission.FeatureOrigin
 import geomap.server.mission.FeatureRepository
 import geomap.server.mission.MissionRepository
 import geomap.server.mission.MissionService
+import geomap.server.mission.MissionStatus
 import geomap.server.mission.MissionValidator
 import geomap.server.mission.SuggestionStatus
 import geomap.server.security.Actor
@@ -24,6 +25,7 @@ import geomap.server.security.ServerSigningKey
 import geomap.server.storage.ObjectStore
 import geomap.server.web.ConflictException
 import geomap.server.web.ForbiddenException
+import geomap.server.web.NotFoundException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import tools.jackson.databind.ObjectMapper
@@ -50,6 +52,28 @@ class PublicationService(
     fun versions(missionId: UUID): List<PublicationView> {
         missions.get(missionId)
         return versions.all(missionId).map { it.view() }
+    }
+
+    @Transactional
+    fun export(
+        actor: Actor,
+        missionId: UUID,
+    ): Pair<MissionVersion, ByteArray> {
+        if (actor.isAgent) throw ForbiddenException("only a human can export a mission")
+        if (missions.get(missionId).status == MissionStatus.WITHDRAWN) throw ConflictException("a withdrawn mission cannot be exported")
+        val latest = versions.latest(missionId) ?: throw NotFoundException("mission has never been published")
+        val bytes = store.get(latest.objectKey).use { it.readBytes() }
+        audit.record(
+            AuditEvent(
+                clock.instant(),
+                actor.user,
+                actor.agent,
+                "mission.export",
+                "mission:$missionId",
+                mapOf("version" to latest.number),
+            ),
+        )
+        return latest to bytes
     }
 
     @Transactional
