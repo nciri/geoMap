@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RequireRole } from "./auth/AuthProvider";
 import { Layout } from "./Layout";
 import { MissionsPage } from "./missions/MissionsPage";
+import { MissionEditorPage } from "./editor/MissionEditorPage";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,14 @@ export function App() {
               element: (
                 <RequireRole role="planificateur">
                   <MissionsPage />
+                </RequireRole>
+              ),
+            },
+            {
+              path: "/missions/:missionId",
+              element: (
+                <RequireRole role="planificateur">
+                  <MissionEditorPage />
                 </RequireRole>
               ),
             },
