@@ -53,3 +53,31 @@ td {
   padding: 0.25rem 0.75rem;
   text-align: left;
 }
+.map-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.map {
+  position: absolute;
+  inset: 0;
+}
+.coordinates {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  padding: 0.25rem 0.5rem;
+  background: rgb(255 255 255 / 85%);
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+.map-alert {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.75rem;
+  background: #ffffff;
+}
