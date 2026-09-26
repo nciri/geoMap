@@ -39,6 +39,8 @@ export function AuthProvider({ manager, children }: { manager: AuthManager; chil
     };
     onUnauthorized(signIn);
     manager.events.addUserLoaded(loaded);
+    // An expired Keycloak session makes the silent renewal fail; the next API call would 401 anyway.
+    manager.events.addSilentRenewError(signIn);
     (async () => {
       if (location.pathname === CALLBACK_PATH) {
         const signedIn = await manager.signinRedirectCallback();
@@ -50,7 +52,11 @@ export function AuthProvider({ manager, children }: { manager: AuthManager; chil
       if (current && !current.expired) loaded(current);
       else signIn();
     })().catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)));
-    return () => manager.events.removeUserLoaded(loaded);
+    return () => {
+      onUnauthorized(() => {});
+      manager.events.removeUserLoaded(loaded);
+      manager.events.removeSilentRenewError(signIn);
+    };
   }, [manager]);
 
   if (error) return <p role="alert">Connexion impossible : {error}</p>;

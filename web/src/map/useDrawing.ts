@@ -50,7 +50,8 @@ export function useDrawing(map: maplibregl.Map | null, handlers: Handlers) {
         new TerraDrawPointMode(),
         new TerraDrawLineStringMode(),
         new TerraDrawPolygonMode(),
-        new TerraDrawCircleMode(),
+        // Geodesic, like circlePolygon: the default Mercator circle is 36 m too wide at 20 km.
+        new TerraDrawCircleMode({ projection: "globe" }),
         new TerraDrawSelectMode({
           flags: SELECT_FLAGS,
           // Delete/rotate/scale change the shape locally without a finish event, so nothing is saved.
@@ -76,6 +77,9 @@ export function useDrawing(map: maplibregl.Map | null, handlers: Handlers) {
       // unregistering layers from a removed map throws.
       if (!map._removed) draw.stop();
       drawRef.current = null;
+      // The next TerraDraw starts empty in static mode; a stale "select" would hide the edited
+      // feature from the mission layer and keep map clicks ignored.
+      setModeState("static");
     };
   }, [map]);
 

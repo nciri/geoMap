@@ -39,14 +39,23 @@ export function circlePolygon(center: Position, radiusMeters: number, steps = 64
   return { type: "Polygon", coordinates: [[...ring, ring[0]]] };
 }
 
-// ponytail: centre = mean of the vertices, within a metre for the regular rings Terra Draw
-// draws; wrong across the antimeridian or near the poles, where no mission area lies today.
+// Terra Draw's select mode resizes circles in Web Mercator space, and averaging raw lon/lat pulls
+// the centre towards the equator by r²·tan(lat)/(4R) (18 m at 20 km in Paris). The Mercator
+// centroid is exact for Mercator circles and cancels that bias for geodesic ones to second order.
+// ponytail: within a metre up to ~50 km radius at mid-latitudes; wrong across the antimeridian and
+// near the poles, where no mission area lies today.
 export function circleFromRing(ring: Position[]): { center: Position; radiusMeters: number } {
   const vertices = ring.slice(0, -1);
-  const center: Position = [
-    vertices.reduce((sum, [lon]) => sum + lon, 0) / vertices.length,
-    vertices.reduce((sum, [, lat]) => sum + lat, 0) / vertices.length,
-  ];
+  if (new Set(vertices.map(String)).size < 3) {
+    throw new Error("Cercle invalide : il faut au moins trois sommets distincts.");
+  }
+  const mercator = vertices.map(([lon, lat]) => [
+    toRadians(lon),
+    Math.log(Math.tan(Math.PI / 4 + toRadians(lat) / 2)),
+  ]);
+  const x = mercator.reduce((sum, [mx]) => sum + mx, 0) / vertices.length;
+  const y = mercator.reduce((sum, [, my]) => sum + my, 0) / vertices.length;
+  const center: Position = [toDegrees(x), toDegrees(2 * Math.atan(Math.exp(y)) - Math.PI / 2)];
   const radiusMeters =
     vertices.reduce((sum, vertex) => sum + distanceMeters(center, vertex), 0) / vertices.length;
   return { center, radiusMeters };

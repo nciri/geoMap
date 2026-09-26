@@ -26,7 +26,12 @@ function fakeManager(user: User | null, callbackUser: User = alice): FakeManager
     signinRedirect: vi.fn(async () => {}),
     signinRedirectCallback: vi.fn(async () => callbackUser),
     signoutRedirect: vi.fn(async () => {}),
-    events: { addUserLoaded: vi.fn(), removeUserLoaded: vi.fn() },
+    events: {
+      addUserLoaded: vi.fn(),
+      removeUserLoaded: vi.fn(),
+      addSilentRenewError: vi.fn(),
+      removeSilentRenewError: vi.fn(),
+    },
   } as unknown as FakeManager;
 }
 
@@ -113,6 +118,35 @@ it("signs in again when the API answers 401", async () => {
   await screen.findByRole("button", { name: "Alice Martin" });
   notifyUnauthorized();
   expect(manager.signinRedirect).toHaveBeenCalled();
+});
+
+it("signs in again when the silent token renewal fails", async () => {
+  const manager = fakeManager(alice);
+  render(
+    <AuthProvider manager={manager}>
+      <Whoami />
+    </AuthProvider>,
+  );
+  await screen.findByRole("button", { name: "Alice Martin" });
+  const [[renewFailed]] = (manager.events.addSilentRenewError as Mock).mock.calls;
+  renewFailed(new Error("login_required"));
+  expect(manager.signinRedirect).toHaveBeenCalled();
+});
+
+it("stops redirecting on 401 once unmounted", async () => {
+  const manager = fakeManager(alice);
+  const { unmount } = render(
+    <AuthProvider manager={manager}>
+      <Whoami />
+    </AuthProvider>,
+  );
+  await screen.findByRole("button", { name: "Alice Martin" });
+  unmount();
+  notifyUnauthorized();
+  expect(manager.signinRedirect).not.toHaveBeenCalled();
+  expect(manager.events.removeSilentRenewError).toHaveBeenCalledWith(
+    (manager.events.addSilentRenewError as Mock).mock.calls[0][0],
+  );
 });
 
 it("shows a sign-in failure instead of a blank page", async () => {

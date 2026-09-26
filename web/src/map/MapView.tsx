@@ -74,8 +74,8 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
     <div className="map-frame">
       <div ref={container} className="map" />
       {basemapError && (
-        <p role="alert" className="map-alert">
-          Fond de carte illisible : {basemapError}
+        <p role="alert" className="map-alert" title={basemapError}>
+          Fond de carte illisible : le serveur ne l'a pas fourni.
         </p>
       )}
       <CoordinateReadout position={cursor} />

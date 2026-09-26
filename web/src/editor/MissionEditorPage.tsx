@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type * as maplibregl from "maplibre-gl";
@@ -40,6 +40,7 @@ export function MissionEditorPage() {
   });
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selectedIdRef = useRef(selectedId);
   const [drawError, setDrawError] = useState<string | null>(null);
   const refreshFeatures = () =>
     queryClient.invalidateQueries({ queryKey: ["features", missionId] });
@@ -59,8 +60,9 @@ export function MissionEditorPage() {
         refreshFeatures,
         (e: unknown) => {
           setDrawError(errorMessage(e));
-          // Put the saved shape back so the map shows what the server holds.
-          drawing.edit(base);
+          // Put the saved shape back so the map shows what the server holds, unless the user has
+          // moved on to another object meanwhile.
+          if (selectedIdRef.current === featureId) drawing.edit(base);
         },
       );
     },
@@ -72,6 +74,10 @@ export function MissionEditorPage() {
     if (!feature) return drawing.stopEditing();
     if (feature.kind === "GENERIC") setDrawError(drawing.edit(feature));
   }
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  });
 
   useEffect(() => {
     if (!map) return;
