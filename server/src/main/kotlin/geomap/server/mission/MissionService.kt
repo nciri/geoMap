@@ -88,8 +88,10 @@ class MissionService(
         id: UUID,
     ) {
         if (actor.isAgent) throw ForbiddenException("agents cannot delete missions")
+        // Lock the mission first so a concurrent publish cannot commit a version after these checks pass.
+        val mission = missions.findForUpdate(id) ?: throw NotFoundException("mission not found")
         if (versions.exists(id)) throw ConflictException("a published mission cannot be deleted; withdraw it instead")
-        if (get(id).status != MissionStatus.DRAFT) throw ConflictException("only draft missions can be deleted")
+        if (mission.status != MissionStatus.DRAFT) throw ConflictException("only draft missions can be deleted")
         missions.delete(id)
         record(actor, "mission.delete", "mission:$id")
     }
