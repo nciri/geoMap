@@ -61,6 +61,21 @@ class ObjectStore(
                 .build(),
         )
 
+    fun getRange(
+        key: String,
+        offset: Long,
+        length: Long,
+    ): InputStream =
+        client.getObject(
+            GetObjectArgs
+                .builder()
+                .bucket(props.bucket)
+                .`object`(key)
+                .offset(offset)
+                .length(length)
+                .build(),
+        )
+
     // ALIAS may pre-provision the bucket; create it lazily so startup does not depend on MinIO being up.
     private fun ensureBucket() {
         if (bucketReady) return

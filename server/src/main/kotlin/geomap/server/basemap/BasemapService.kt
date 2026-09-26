@@ -11,6 +11,7 @@ import geomap.server.storage.ObjectStore
 import geomap.server.web.ConflictException
 import geomap.server.web.ForbiddenException
 import geomap.server.web.InvalidInputException
+import geomap.server.web.NotFoundException
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
 import java.io.InputStream
@@ -28,6 +29,14 @@ class BasemapService(
     private val clock: Clock,
 ) {
     fun list(): List<Basemap> = basemaps.findAll()
+
+    fun get(id: String): Basemap = basemaps.find(id) ?: throw NotFoundException("basemap not found")
+
+    fun read(
+        basemap: Basemap,
+        offset: Long,
+        length: Long,
+    ): InputStream = store.getRange(basemap.objectKey, offset, length)
 
     fun upload(
         actor: Actor,
