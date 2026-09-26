@@ -1,3 +1,10 @@
+import { useSession } from "./auth/AuthProvider";
+
 export function App() {
-  return <h1>geoMap</h1>;
+  const { name, signOut } = useSession();
+  return (
+    <header>
+      <strong>geoMap</strong> {name} <button onClick={signOut}>Déconnexion</button>
+    </header>
+  );
 }
