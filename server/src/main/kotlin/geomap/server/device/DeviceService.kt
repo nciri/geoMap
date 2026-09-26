@@ -3,6 +3,8 @@ package geomap.server.device
 import geomap.server.audit.AuditEvent
 import geomap.server.audit.AuditRepository
 import geomap.server.mission.MissionService
+import geomap.server.publication.MissionVersionRepository
+import geomap.server.publication.PublicationService
 import geomap.server.security.Actor
 import geomap.server.security.Pem
 import geomap.server.web.ConflictException
@@ -34,6 +36,8 @@ class DeviceService(
     private val missions: MissionService,
     private val audit: AuditRepository,
     private val clock: Clock,
+    private val publications: PublicationService,
+    private val versions: MissionVersionRepository,
 ) {
     fun list(): List<Device> = devices.findAll()
 
@@ -101,6 +105,8 @@ class DeviceService(
             if (devices.findForUpdate(id)?.status != DeviceStatus.ENROLLED) throw InvalidInputException("device $id is not enrolled")
         }
         assignments.replace(missionId, deviceIds)
+        // Spec §5.6: devices of a published mission follow its latest version, rebuilt for the new list.
+        versions.latest(missionId)?.let { publications.rebuild(actor, it) }
         audit.record(
             AuditEvent(
                 clock.instant(),
