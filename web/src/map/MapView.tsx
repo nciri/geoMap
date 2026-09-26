@@ -30,6 +30,7 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
   });
 
   useEffect(() => {
+    let disposed = false;
     const map = new maplibregl.Map({
       container: container.current!,
       style: basemapStyle(basemapId),
@@ -48,7 +49,7 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
       protocol.add(tiles);
       tiles.getHeader().then(
         (header) => {
-          if (bounds) return;
+          if (disposed || bounds) return;
           map.fitBounds(
             [
               [header.minLon, header.minLat],
@@ -57,10 +58,16 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
             { animate: false },
           );
         },
-        (e: unknown) => setBasemapError(errorMessage(e)),
+        (e: unknown) => {
+          if (disposed) return;
+          setBasemapError(errorMessage(e));
+        },
       );
     }
-    return () => map.remove();
+    return () => {
+      disposed = true;
+      map.remove();
+    };
   }, [basemapId]);
 
   return (
