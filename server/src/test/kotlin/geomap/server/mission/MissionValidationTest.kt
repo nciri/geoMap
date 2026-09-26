@@ -2,8 +2,11 @@ package geomap.server.mission
 
 import com.jayway.jsonpath.JsonPath
 import geomap.server.IntegrationTest
+import geomap.server.TestDevices
 import geomap.server.basemap.Basemap
 import geomap.server.basemap.BasemapRepository
+import geomap.server.device.AssignmentRepository
+import geomap.server.device.DeviceRepository
 import org.hamcrest.Matchers.containsInAnyOrder
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -21,6 +24,12 @@ class MissionValidationTest : IntegrationTest() {
 
     @Autowired
     private lateinit var basemaps: BasemapRepository
+
+    @Autowired
+    private lateinit var devices: DeviceRepository
+
+    @Autowired
+    private lateinit var assignments: AssignmentRepository
 
     private lateinit var missionId: String
 
@@ -45,6 +54,7 @@ class MissionValidationTest : IntegrationTest() {
             Basemap("zone-nord", "Zone Nord", 1, "basemaps/zone-nord/seed.pmtiles", "0".repeat(64), "c2ln", "root", Instant.now()),
         )
         missionId = createMission("""{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}""")
+        assignments.replace(UUID.fromString(missionId), setOf(TestDevices.insert(devices, 'a').id))
     }
 
     private fun add(
@@ -78,7 +88,7 @@ class MissionValidationTest : IntegrationTest() {
         missionId = createMission("""{"name":"Op Vide"}""")
         validation().andExpect {
             jsonPath("$.publishable") { value(false) }
-            jsonPath("$.errors[*].code") { value(containsInAnyOrder("NO_BASEMAP", "NO_EXPIRY")) }
+            jsonPath("$.errors[*].code") { value(containsInAnyOrder("NO_BASEMAP", "NO_EXPIRY", "NO_RECIPIENT")) }
             jsonPath("$.warnings[0].code") { value("EMPTY_MISSION") }
         }
     }
@@ -130,6 +140,16 @@ class MissionValidationTest : IntegrationTest() {
             jsonPath("$.publishable") { value(false) }
             jsonPath("$.errors[0].code") { value("SYMBOL_NOT_RENDERABLE") }
             jsonPath("$.errors[0].featureId") { value(broken.id.toString()) }
+        }
+    }
+
+    @Test
+    fun `a mission without an enrolled device is not publishable`() {
+        jdbc.sql("UPDATE device SET status = 'REVOKED'").update()
+        add(infantry)
+        validation().andExpect {
+            jsonPath("$.publishable") { value(false) }
+            jsonPath("$.errors[0].code") { value("NO_RECIPIENT") }
         }
     }
 

@@ -1,6 +1,8 @@
 package geomap.server.mission
 
 import geomap.server.basemap.BasemapRepository
+import geomap.server.device.AssignmentRepository
+import geomap.server.device.DeviceStatus
 import geomap.server.symbology.SymbolCatalog
 import geomap.server.symbology.SymbolRenderer
 import geomap.server.web.InvalidInputException
@@ -32,6 +34,7 @@ class MissionValidator(
     private val catalog: SymbolCatalog,
     private val renderer: SymbolRenderer,
     private val basemaps: BasemapRepository,
+    private val assignments: AssignmentRepository,
     private val clock: Clock,
 ) {
     fun validate(missionId: UUID): ValidationReport {
@@ -50,6 +53,9 @@ class MissionValidator(
         when {
             validUntil == null -> errors += ValidationIssue("NO_EXPIRY", "mission has no expiry date")
             !validUntil.isAfter(clock.instant()) -> errors += ValidationIssue("EXPIRED", "mission expiry date is past")
+        }
+        if (assignments.devices(missionId).none { it.status == DeviceStatus.ENROLLED }) {
+            errors += ValidationIssue("NO_RECIPIENT", "no enrolled device is assigned")
         }
         published.filter { it.kind == FeatureKind.APP6 }.forEach { feature ->
             renderingProblem(feature)?.let { errors += ValidationIssue("SYMBOL_NOT_RENDERABLE", it, feature.id) }

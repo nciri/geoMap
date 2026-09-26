@@ -51,6 +51,19 @@ class MissionRepository(
             .update()
     }
 
+    fun markPublished(
+        id: UUID,
+        updatedBy: String,
+        updatedAt: Instant,
+    ) {
+        jdbc
+            .sql("UPDATE mission SET status = 'PUBLISHED', updated_by = :updatedBy, updated_at = :updatedAt WHERE id = :id")
+            .param("id", id)
+            .param("updatedBy", updatedBy)
+            .param("updatedAt", updatedAt.toUtc())
+            .update()
+    }
+
     fun find(id: UUID): Mission? =
         jdbc
             .sql("SELECT * FROM mission WHERE id = :id")
