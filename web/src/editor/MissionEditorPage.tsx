@@ -85,7 +85,8 @@ export function MissionEditorPage() {
 
   const editingId = drawing.mode === "select" ? selectedId : null;
   useEffect(() => {
-    if (!map || !features.data) return;
+    // The previous map lingers here, already removed, until the remounted MapView loads.
+    if (!map || map._removed || !features.data) return;
     map
       .getSource<GeoJSONSource>(MISSION_SOURCE)
       ?.setData(toFeatureCollection(features.data, editingId));

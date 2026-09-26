@@ -51,7 +51,11 @@ export function useDrawing(map: maplibregl.Map | null, handlers: Handlers) {
         new TerraDrawLineStringMode(),
         new TerraDrawPolygonMode(),
         new TerraDrawCircleMode(),
-        new TerraDrawSelectMode({ flags: SELECT_FLAGS }),
+        new TerraDrawSelectMode({
+          flags: SELECT_FLAGS,
+          // Delete/rotate/scale change the shape locally without a finish event, so nothing is saved.
+          keyEvents: { deselect: "Escape", delete: null, rotate: null, scale: null },
+        }),
       ],
     });
     draw.start();
@@ -68,7 +72,9 @@ export function useDrawing(map: maplibregl.Map | null, handlers: Handlers) {
     });
     drawRef.current = draw;
     return () => {
-      draw.stop();
+      // A basemap change remounts MapView, which removes this map before `map` state moves on;
+      // unregistering layers from a removed map throws.
+      if (!map._removed) draw.stop();
       drawRef.current = null;
     };
   }, [map]);
