@@ -92,3 +92,36 @@ td {
   overflow: auto;
   border-right: 1px solid #ccd0da;
 }
+.features ul {
+  list-style: none;
+  padding: 0;
+}
+.features li.selected .feature-item {
+  font-weight: bold;
+}
+.feature-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.badge {
+  color: #df8e1d;
+}
+.feature-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.feature-details label {
+  display: flex;
+  flex-direction: column;
+}
+.toolbar {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+}
+.toolbar [aria-pressed="true"] {
+  font-weight: bold;
+}

@@ -25,6 +25,7 @@ import {
 import { useDrawing } from "../map/useDrawing";
 import { toFeatureInput } from "../map/drawing";
 import { DrawToolbar } from "./DrawToolbar";
+import { FeaturePanel } from "./FeaturePanel";
 
 export function MissionEditorPage() {
   const { missionId = "" } = useParams();
@@ -125,6 +126,12 @@ export function MissionEditorPage() {
           }}
         />
         {drawError && <p role="alert">{drawError}</p>}
+        <FeaturePanel
+          missionId={missionId}
+          features={features.data}
+          selectedId={selectedId}
+          onSelect={select}
+        />
       </aside>
       <MapView
         key={current.basemapId ?? "none"}
