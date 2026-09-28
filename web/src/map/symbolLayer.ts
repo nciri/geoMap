@@ -24,14 +24,23 @@ export function symbolKey(sidc: string, modifiers: Record<string, string> | null
   return `${sidc}|${entries.map(([key, value]) => `${key}=${value}`).join("&")}`;
 }
 
-// MapLibre centres the image on the point; the symbol's own centre is at (anchorX, anchorY).
-export function iconOffset(
+// MapLibre centres the image on the point, and a per-feature icon-offset does not survive the
+// worker (GeoJSON properties arrive as strings); padding the image puts the symbol's anchor
+// (anchorX, anchorY) at its centre. (dx, dy) is where the bitmap is drawn in the padded image.
+export function anchoredCanvasLayout(
   anchorX: number,
   anchorY: number,
   width: number,
   height: number,
-): [number, number] {
-  return [width / 2 - anchorX, height / 2 - anchorY];
+): { width: number; height: number; dx: number; dy: number } {
+  const halfWidth = Math.ceil(Math.max(anchorX, width - anchorX));
+  const halfHeight = Math.ceil(Math.max(anchorY, height - anchorY));
+  return {
+    width: 2 * halfWidth,
+    height: 2 * halfHeight,
+    dx: halfWidth - anchorX,
+    dy: halfHeight - anchorY,
+  };
 }
 
 type App6Point = Feature & { sidc: string; geometry: Point };
@@ -50,15 +59,14 @@ export const symbolLabel = (f: Feature) => f.name || (f.sidc ?? "");
 
 export function pointSymbols(
   features: Feature[],
-  offsets: Map<string, [number, number]>,
+  loaded: ReadonlySet<string>,
   hiddenId: string | null = null,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
     features: drawnPoints(features, hiddenId).flatMap((f) => {
       const key = symbolKey(f.sidc, f.modifiers);
-      const offset = offsets.get(key);
-      if (!offset) return [];
+      if (!loaded.has(key)) return [];
       return [
         {
           type: "Feature" as const,
@@ -66,7 +74,6 @@ export function pointSymbols(
           properties: {
             id: f.id,
             icon: key,
-            offset,
             pending: f.suggestionStatus === "PENDING",
             label: symbolLabel(f),
           },
@@ -79,13 +86,13 @@ export function pointSymbols(
 // A unit must stay on the map while its icon loads or when it cannot be fetched.
 export function pointFallbacks(
   features: Feature[],
-  offsets: Map<string, [number, number]>,
+  loaded: ReadonlySet<string>,
   hiddenId: string | null = null,
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
     features: drawnPoints(features, hiddenId)
-      .filter((f) => !offsets.has(symbolKey(f.sidc, f.modifiers)))
+      .filter((f) => !loaded.has(symbolKey(f.sidc, f.modifiers)))
       .map((f) => ({
         type: "Feature" as const,
         geometry: f.geometry,
@@ -113,14 +120,11 @@ export function tacticalCollection(
           properties: {
             ...p,
             featureId,
+            // mil-sym's few-pixel anchorOffset nudge is dropped: an array-valued text-offset
+            // property reaches MapLibre as a string and is ignored anyway.
             textAnchor: ["left", "right", "center"].includes(p.labelAlign)
               ? p.labelAlign
               : "center",
-            // mil-sym offsets are pixels; MapLibre's text-offset is in ems.
-            textOffset: [
-              Number(p.anchorOffsetX ?? 0) / LABEL_FONT_SIZE,
-              Number(p.anchorOffsetY ?? 0) / LABEL_FONT_SIZE,
-            ],
           },
         };
       }),
@@ -149,7 +153,6 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
       "text-font": [MAP_FONTS[1]],
       "text-size": LABEL_FONT_SIZE,
       "text-anchor": ["get", "textAnchor"],
-      "text-offset": ["get", "textOffset"],
       "text-rotate": ["coalesce", ["get", "rotation"], 0],
       "text-rotation-alignment": "map",
       "text-allow-overlap": true,
@@ -191,7 +194,6 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
     source: SYMBOL_SOURCE,
     layout: {
       "icon-image": ["get", "icon"],
-      "icon-offset": ["get", "offset"],
       "icon-allow-overlap": true,
       "text-field": ["get", "label"],
       "text-font": [MAP_FONTS[0]],

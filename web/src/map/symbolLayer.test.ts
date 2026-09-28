@@ -1,7 +1,7 @@
 import { feature } from "../test/fixtures";
 import {
   bandOf,
-  iconOffset,
+  anchoredCanvasLayout,
   pointFallbacks,
   pointSymbols,
   symbolKey,
@@ -31,12 +31,29 @@ it("keys icons by SIDC and modifiers regardless of order", () => {
   );
 });
 
-it("shifts the icon so its anchor, not its centre, sits on the position", () => {
-  expect(iconOffset(40, 33, 80, 60)).toEqual([0, -3]);
-  expect(iconOffset(10, 10, 20, 20)).toEqual([0, 0]);
+it("pads the icon so its anchor, not its centre, sits on the position", () => {
+  expect(anchoredCanvasLayout(40, 33, 80, 60)).toEqual({ width: 80, height: 66, dx: 0, dy: 0 });
+  expect(anchoredCanvasLayout(10, 10, 20, 20)).toEqual({ width: 20, height: 20, dx: 0, dy: 0 });
+  expect(anchoredCanvasLayout(5, 50, 20, 60)).toEqual({ width: 30, height: 100, dx: 10, dy: 0 });
+  // A fractional anchor still lands on the centre of a whole-pixel image.
+  expect(anchoredCanvasLayout(10.5, 10, 20, 20)).toEqual({
+    width: 22,
+    height: 20,
+    dx: 0.5,
+    dy: 0,
+  });
 });
 
-it("lists APP-6D points whose icon is ready, with their offset", () => {
+it("keeps array-valued offsets out of layer properties, which the worker stringifies", () => {
+  for (const layer of SYMBOL_LAYERS) {
+    const layout = (layer as { layout?: Record<string, unknown> }).layout ?? {};
+    for (const key of ["icon-offset", "text-offset"]) {
+      expect(JSON.stringify(layout[key] ?? null)).not.toContain('"get"');
+    }
+  }
+});
+
+it("lists APP-6D points whose icon is ready", () => {
   const unit = feature({
     id: "u",
     kind: "APP6",
@@ -56,11 +73,11 @@ it("lists APP-6D points whose icon is ready, with their offset", () => {
     },
   });
   const key = symbolKey(unit.sidc!, unit.modifiers);
-  const collection = pointSymbols([unit, line, feature()], new Map([[key, [0, -3]]]));
+  const collection = pointSymbols([unit, line, feature()], new Set([key]));
   expect(collection.features.map((f) => f.properties)).toEqual([
-    { id: "u", icon: key, offset: [0, -3], pending: false, label: "PC avancé" },
+    { id: "u", icon: key, pending: false, label: "PC avancé" },
   ]);
-  expect(pointSymbols([unit], new Map()).features).toEqual([]);
+  expect(pointSymbols([unit], new Set()).features).toEqual([]);
 });
 
 it("turns mil-sym label placement into MapLibre text properties", () => {
@@ -83,8 +100,8 @@ it("turns mil-sym label placement into MapLibre text properties", () => {
     featureId: "l",
     label: "BP1",
     textAnchor: "right",
-    textOffset: [-0.5, 0.5],
   });
+  expect(collection.features[0].properties).not.toHaveProperty("textOffset");
 });
 
 it("labels tactical graphics with a shipped font", () => {
@@ -110,10 +127,9 @@ it("keeps APP-6D points without a loaded icon on the map as named markers", () =
     suggestionStatus: "REJECTED",
   });
   const hidden = feature({ id: "h", kind: "APP6", sidc: "10031000001211000000" });
-  const offsets = new Map<string, [number, number]>([[symbolKey(loaded.sidc!, null), [0, 0]]]);
   const collection = pointFallbacks(
     [loaded, waiting, pending, rejected, hidden, feature()],
-    offsets,
+    new Set([symbolKey(loaded.sidc!, null)]),
     "h",
   );
   expect(collection.features.map((f) => f.properties)).toEqual([

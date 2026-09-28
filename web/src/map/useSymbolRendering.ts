@@ -7,7 +7,7 @@ import { errorMessage } from "../api/client";
 import {
   bandOf,
   FALLBACK_SOURCE,
-  iconOffset,
+  anchoredCanvasLayout,
   pointFallbacks,
   pointSymbols,
   symbolKey,
@@ -29,7 +29,7 @@ export function useSymbolRendering(
 ): { error: string | null } {
   const [band, setBand] = useState<Band>("MID");
   const [iconErrors, setIconErrors] = useState(new Map<string, string>());
-  const [offsets, setOffsets] = useState(new Map<string, [number, number]>());
+  const [icons, setIcons] = useState(new Set<string>());
   // Per map: a download started for a map removed by a basemap switch must not stop the new
   // map from loading the same icon.
   const loading = useRef(new WeakMap<maplibregl.Map, Set<string>>());
@@ -56,10 +56,8 @@ export function useSymbolRendering(
         .then(async ({ blob, anchorX, anchorY }) => {
           const bitmap = await createImageBitmap(blob);
           if (map._removed) return;
-          if (!map.hasImage(key)) map.addImage(key, bitmap);
-          setOffsets((current) =>
-            new Map(current).set(key, iconOffset(anchorX, anchorY, bitmap.width, bitmap.height)),
-          );
+          if (!map.hasImage(key)) map.addImage(key, anchoredImage(bitmap, anchorX, anchorY));
+          setIcons((current) => new Set(current).add(key));
           setIconErrors((current) => {
             if (!current.has(key)) return current;
             const next = new Map(current);
@@ -88,8 +86,8 @@ export function useSymbolRendering(
   const rendered = renders.map((r) => r.data);
   useEffect(() => {
     if (!map || map._removed || !features) return;
-    // Offsets outlive a remounted map; only icons this map holds count as loaded.
-    const loaded = new Map([...offsets].filter(([key]) => map.hasImage(key)));
+    // Loaded keys outlive a remounted map; only icons this map holds count.
+    const loaded = new Set([...icons].filter((key) => map.hasImage(key)));
     map.getSource<GeoJSONSource>(SYMBOL_SOURCE)?.setData(pointSymbols(features, loaded, hiddenId));
     map
       .getSource<GeoJSONSource>(FALLBACK_SOURCE)
@@ -107,4 +105,11 @@ export function useSymbolRendering(
     error:
       iconError ?? (graphicError ? `Graphisme illisible : ${errorMessage(graphicError)}` : null),
   };
+}
+
+function anchoredImage(bitmap: ImageBitmap, anchorX: number, anchorY: number): ImageData {
+  const layout = anchoredCanvasLayout(anchorX, anchorY, bitmap.width, bitmap.height);
+  const context = new OffscreenCanvas(layout.width, layout.height).getContext("2d")!;
+  context.drawImage(bitmap, layout.dx, layout.dy);
+  return context.getImageData(0, 0, layout.width, layout.height);
 }
