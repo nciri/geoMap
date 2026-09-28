@@ -7,6 +7,7 @@ import { errorMessage } from "../api/client";
 import {
   bandOf,
   FALLBACK_SOURCE,
+  liveIconError,
   anchoredCanvasLayout,
   pointFallbacks,
   pointSymbols,
@@ -67,7 +68,10 @@ export function useSymbolRendering(
         })
         .catch((e: unknown) =>
           setIconErrors((current) =>
-            new Map(current).set(key, `Symbole illisible (${symbolLabel(f)}) : ${errorMessage(e)}`),
+            new Map(current).set(
+              key,
+              `Symbole illisible (${symbolLabel(f) || f.sidc}) : ${errorMessage(e)}`,
+            ),
           ),
         )
         .finally(() => inFlight.delete(key));
@@ -100,14 +104,18 @@ export function useSymbolRendering(
   });
 
   const graphicError = renders.find((r) => r.error)?.error;
-  const iconError = iconErrors.values().next().value ?? null;
+  const iconError = liveIconError(iconErrors, features ?? []);
   return {
     error:
       iconError ?? (graphicError ? `Graphisme illisible : ${errorMessage(graphicError)}` : null),
   };
 }
 
-function anchoredImage(bitmap: ImageBitmap, anchorX: number, anchorY: number): ImageData {
+function anchoredImage(
+  bitmap: ImageBitmap,
+  anchorX: number | null,
+  anchorY: number | null,
+): ImageData {
   const layout = anchoredCanvasLayout(anchorX, anchorY, bitmap.width, bitmap.height);
   const context = new OffscreenCanvas(layout.width, layout.height).getContext("2d")!;
   context.drawImage(bitmap, layout.dx, layout.dy);

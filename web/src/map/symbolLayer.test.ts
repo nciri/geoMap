@@ -2,9 +2,11 @@ import { feature } from "../test/fixtures";
 import {
   bandOf,
   anchoredCanvasLayout,
+  liveIconError,
   pointFallbacks,
   pointSymbols,
   symbolKey,
+  symbolLabel,
   SYMBOL_LAYERS,
   tacticalCollection,
 } from "./symbolLayer";
@@ -42,6 +44,10 @@ it("pads the icon so its anchor, not its centre, sits on the position", () => {
     dx: 0.5,
     dy: 0,
   });
+});
+
+it("centres an icon whose anchor the server did not send", () => {
+  expect(anchoredCanvasLayout(null, null, 20, 30)).toEqual({ width: 20, height: 30, dx: 0, dy: 0 });
 });
 
 it("keeps array-valued offsets out of layer properties, which the worker stringifies", () => {
@@ -133,7 +139,7 @@ it("keeps APP-6D points without a loaded icon on the map as named markers", () =
     "h",
   );
   expect(collection.features.map((f) => f.properties)).toEqual([
-    { id: "w", label: "10031000001211000000", pending: false },
+    { id: "w", label: "", pending: false },
     { id: "p", label: "PC avancé", pending: true },
   ]);
 });
@@ -145,4 +151,21 @@ it("names APP-6D icons under the symbol and never hides the icon for its label",
   expect(symbol.layout?.["text-field"]).toEqual(["get", "label"]);
   expect(symbol.layout?.["text-font"]).toEqual([MAP_FONTS[0]]);
   expect(symbol.layout?.["text-optional"]).toBe(true);
+});
+
+it("labels an unnamed unit by its designation, never by its raw SIDC", () => {
+  const unit = { kind: "APP6" as const, name: "", sidc: "10031000001211000000" };
+  expect(symbolLabel(feature({ ...unit, modifiers: { T: "1ER RI" } }))).toBe("1ER RI");
+  expect(symbolLabel(feature({ ...unit, modifiers: null }))).toBe("");
+  expect(symbolLabel(feature({ ...unit, name: "PC", modifiers: { T: "1ER RI" } }))).toBe("PC");
+});
+
+it("reports only icon errors of objects still on the mission", () => {
+  const unit = feature({ id: "u", kind: "APP6", sidc: "10031000161211000000", modifiers: null });
+  const errors = new Map([
+    ["10061000161211000000|", "Symbole illisible (supprimé)"],
+    [symbolKey(unit.sidc!, null), "Symbole illisible (u)"],
+  ]);
+  expect(liveIconError(errors, [unit])).toBe("Symbole illisible (u)");
+  expect(liveIconError(errors, [])).toBeNull();
 });

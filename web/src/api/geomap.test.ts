@@ -35,6 +35,19 @@ it("fetches an icon with its anchor and skips empty modifiers", async () => {
   expect(params.has("H")).toBe(false);
 });
 
+it("leaves the icon anchor unknown when the server does not send it", async () => {
+  server.use(
+    http.get("/api/symbols/:sidc/icon.png", () =>
+      HttpResponse.arrayBuffer(new Uint8Array([1]).buffer, {
+        headers: { "Content-Type": "image/png" },
+      }),
+    ),
+  );
+  const icon = await fetchSymbolIcon("10031000161211000000", {});
+  expect(icon.anchorX).toBeNull();
+  expect(icon.anchorY).toBeNull();
+});
+
 it("asks the server to render a graphic for a zoom", async () => {
   let body: unknown;
   server.use(

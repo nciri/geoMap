@@ -27,12 +27,15 @@ export function symbolKey(sidc: string, modifiers: Record<string, string> | null
 // MapLibre centres the image on the point, and a per-feature icon-offset does not survive the
 // worker (GeoJSON properties arrive as strings); padding the image puts the symbol's anchor
 // (anchorX, anchorY) at its centre. (dx, dy) is where the bitmap is drawn in the padded image.
+// An anchor the server did not send defaults to the image centre.
 export function anchoredCanvasLayout(
-  anchorX: number,
-  anchorY: number,
+  anchorXOrNull: number | null,
+  anchorYOrNull: number | null,
   width: number,
   height: number,
 ): { width: number; height: number; dx: number; dy: number } {
+  const anchorX = anchorXOrNull ?? width / 2;
+  const anchorY = anchorYOrNull ?? height / 2;
   const halfWidth = Math.ceil(Math.max(anchorX, width - anchorX));
   const halfHeight = Math.ceil(Math.max(anchorY, height - anchorY));
   return {
@@ -55,7 +58,17 @@ const drawnPoints = (features: Feature[], hiddenId: string | null) =>
       f.id !== hiddenId,
   );
 
-export const symbolLabel = (f: Feature) => f.name || (f.sidc ?? "");
+export const symbolLabel = (f: Feature) => f.name || (f.modifiers?.T ?? "");
+
+// Errors are kept per icon key; a key no current object uses belongs to a deleted or changed one.
+export function liveIconError(
+  errors: ReadonlyMap<string, string>,
+  features: Feature[],
+): string | null {
+  const used = new Set(drawnPoints(features, null).map((f) => symbolKey(f.sidc, f.modifiers)));
+  for (const [key, message] of errors) if (used.has(key)) return message;
+  return null;
+}
 
 export function pointSymbols(
   features: Feature[],

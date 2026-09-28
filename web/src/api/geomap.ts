@@ -154,8 +154,9 @@ export interface DeviceRegistration {
 
 export interface SymbolIconImage {
   blob: Blob;
-  anchorX: number;
-  anchorY: number;
+  // null when the server sent no anchor.
+  anchorX: number | null;
+  anchorY: number | null;
 }
 
 export type GraphicCollection = FeatureCollection;
@@ -163,6 +164,11 @@ export type GraphicCollection = FeatureCollection;
 export const searchSymbols = (q: string, limit = 50) =>
   api<SymbolInfo[]>(`/api/symbols?q=${encodeURIComponent(q)}&limit=${limit}`);
 export const describeSymbol = (sidc: string) => api<SymbolInfo>(`/api/symbols/${sidc}`);
+
+function header(response: Response, name: string): number | null {
+  const value = response.headers.get(name);
+  return value === null ? null : Number(value);
+}
 
 export async function fetchSymbolIcon(
   sidc: string,
@@ -173,8 +179,8 @@ export async function fetchSymbolIcon(
   const response = await apiResponse(`/api/symbols/${sidc}/icon.png?${params}`);
   return {
     blob: await response.blob(),
-    anchorX: Number(response.headers.get("X-Anchor-X") ?? 0),
-    anchorY: Number(response.headers.get("X-Anchor-Y") ?? 0),
+    anchorX: header(response, "X-Anchor-X"),
+    anchorY: header(response, "X-Anchor-Y"),
   };
 }
 
