@@ -90,7 +90,7 @@ export function drawnToInput(
   }
 }
 
-export function toDrawFeature(feature: Feature): GeoJSONStoreFeatures | null {
+export function toDrawFeature(feature: Feature): GeoJSONStoreFeatures {
   if (feature.kind === "GENERIC" && isCircle(feature)) {
     return {
       type: "Feature",

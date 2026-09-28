@@ -71,7 +71,7 @@ it("rounds coordinates to the precision Terra Draw accepts", () => {
 });
 
 it("maps saved geometries to their drawing mode", () => {
-  expect(toDrawFeature(feature())?.properties.mode).toBe("point");
+  expect(toDrawFeature(feature()).properties.mode).toBe("point");
   const line = feature({
     geometry: {
       type: "LineString",
@@ -81,7 +81,7 @@ it("maps saved geometries to their drawing mode", () => {
       ],
     },
   });
-  expect(toDrawFeature(line)?.properties.mode).toBe("linestring");
+  expect(toDrawFeature(line).properties.mode).toBe("linestring");
 });
 
 it("reports a degenerate circle in French instead of throwing", () => {
@@ -194,5 +194,5 @@ it("keeps kind, SIDC and modifiers when an APP-6D object is reshaped", () => {
 
 it("opens an APP-6D object for reshaping in its geometry's mode", () => {
   const point = feature({ kind: "APP6", sidc: "10031000161211000000" });
-  expect(toDrawFeature(point)?.properties.mode).toBe("point");
+  expect(toDrawFeature(point).properties.mode).toBe("point");
 });
