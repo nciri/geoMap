@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
@@ -168,4 +169,33 @@ it("offers neither publication nor export once withdrawn", async () => {
   ).toBeInTheDocument();
   expect(screen.queryByRole("button", { name: /Publier/ })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Exporter pour carte SD" })).not.toBeInTheDocument();
+});
+
+it("keeps the last report on screen while a new revision is validated", async () => {
+  let validations = 0;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.get(`${base}/validation`, async () => {
+      if (validations++ > 0) await held;
+      return HttpResponse.json({ errors: [], warnings: [] });
+    }),
+    http.get(`${base}/versions`, () => HttpResponse.json([])),
+  );
+  function Editing() {
+    const [revision, setRevision] = useState("r1");
+    return (
+      <>
+        <button onClick={() => setRevision("r2")}>Modifier</button>
+        <PublicationPanel mission={mission()} revision={revision} onSelectFeature={vi.fn()} />
+      </>
+    );
+  }
+  renderWithProviders(<Editing />);
+  expect(await screen.findByText("Aucune erreur bloquante.")).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Modifier" }));
+  await waitFor(() => expect(validations).toBe(2));
+  expect(screen.getByText("Aucune erreur bloquante.")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Publier la version 1" })).toBeEnabled();
+  release();
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   downloadPackage,
   getValidation,
@@ -37,6 +37,8 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
   const validation = useQuery({
     queryKey: ["validation", mission.id, revision],
     queryFn: () => getValidation(mission.id),
+    // Every save bumps the revision; without this the report and publish button blink out.
+    placeholderData: keepPreviousData,
   });
   const versions = useQuery({
     queryKey: ["versions", mission.id],
