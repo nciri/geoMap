@@ -20,10 +20,8 @@ const SessionContext = createContext<Session | null>(null);
 
 function safeReturnPath(state: unknown): string {
   const returnTo = (state as { returnTo?: unknown } | undefined)?.returnTo;
-  // "//host" is a protocol-relative URL to another site.
-  return typeof returnTo === "string" && returnTo.startsWith("/") && !returnTo.startsWith("//")
-    ? returnTo
-    : "/";
+  // "//host" is a protocol-relative URL to another site, and browsers read "/\host" the same way.
+  return typeof returnTo === "string" && /^\/(?![/\\])/.test(returnTo) ? returnTo : "/";
 }
 
 export function AuthProvider({ manager, children }: { manager: AuthManager; children: ReactNode }) {
@@ -59,12 +57,22 @@ export function AuthProvider({ manager, children }: { manager: AuthManager; chil
     };
   }, [manager]);
 
-  if (error) return <p role="alert">Connexion impossible : {error}</p>;
+  if (error) {
+    return (
+      <>
+        <p role="alert">Connexion impossible : {error}</p>
+        <a href="/">Réessayer</a>
+      </>
+    );
+  }
   if (!user) return <p>Connexion…</p>;
   const session: Session = {
     name: user.profile.name ?? user.profile.preferred_username ?? user.profile.sub,
     roles: rolesOf(user.access_token),
-    signOut: () => void manager.signoutRedirect(),
+    signOut: () => {
+      setAccessToken(null);
+      void manager.signoutRedirect();
+    },
   };
   return <SessionContext value={session}>{children}</SessionContext>;
 }

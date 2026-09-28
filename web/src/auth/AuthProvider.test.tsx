@@ -78,9 +78,21 @@ it("renders the app for a signed-in user and shares the token", async () => {
       <Whoami />
     </AuthProvider>,
   );
-  await userEvent.click(await screen.findByRole("button", { name: "Alice Martin" }));
+  const whoami = await screen.findByRole("button", { name: "Alice Martin" });
   expect(getAccessToken()).toBe(token);
+  await userEvent.click(whoami);
   expect(manager.signoutRedirect).toHaveBeenCalled();
+});
+
+it("forgets the token when signing out", async () => {
+  const manager = fakeManager(alice);
+  render(
+    <AuthProvider manager={manager}>
+      <Whoami />
+    </AuthProvider>,
+  );
+  await userEvent.click(await screen.findByRole("button", { name: "Alice Martin" }));
+  expect(getAccessToken()).toBeNull();
 });
 
 it("completes the Keycloak callback and returns to the remembered page", async () => {
@@ -99,6 +111,18 @@ it("completes the Keycloak callback and returns to the remembered page", async (
 it("never returns to another site after the callback", async () => {
   history.replaceState(null, "", "/callback?code=abc&state=xyz");
   const manager = fakeManager(null, { ...alice, state: { returnTo: "//evil.example/x" } } as User);
+  render(
+    <AuthProvider manager={manager}>
+      <Whoami />
+    </AuthProvider>,
+  );
+  await screen.findByRole("button", { name: "Alice Martin" });
+  expect(location.pathname).toBe("/");
+});
+
+it("never returns to another site through a backslash path", async () => {
+  history.replaceState(null, "", "/callback?code=abc&state=xyz");
+  const manager = fakeManager(null, { ...alice, state: { returnTo: "/\\evil.example/x" } } as User);
   render(
     <AuthProvider manager={manager}>
       <Whoami />
@@ -159,6 +183,7 @@ it("shows a sign-in failure instead of a blank page", async () => {
     </AuthProvider>,
   );
   expect(await screen.findByRole("alert")).toHaveTextContent("access_denied");
+  expect(screen.getByRole("link", { name: "Réessayer" })).toHaveAttribute("href", "/");
 });
 
 it("guards pages by role", async () => {
