@@ -29,6 +29,7 @@ import { drawnToInput, modeFor } from "../map/drawing";
 import { SymbolPicker, type PlacedSymbol } from "../symbols/SymbolPicker";
 import { DrawToolbar } from "./DrawToolbar";
 import { FeaturePanel } from "./FeaturePanel";
+import { PublicationPanel } from "./PublicationPanel";
 
 export function MissionEditorPage() {
   const { missionId = "" } = useParams();
@@ -184,6 +185,14 @@ export function MissionEditorPage() {
           features={features.data}
           selectedId={selectedId}
           onSelect={select}
+        />
+        <PublicationPanel
+          mission={current}
+          revision={`${mission.dataUpdatedAt}-${features.dataUpdatedAt}`}
+          onSelectFeature={(featureId) => {
+            const target = features.data?.find((f) => f.id === featureId);
+            if (target) select(target);
+          }}
         />
       </aside>
       <MapView

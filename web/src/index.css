@@ -140,3 +140,22 @@ td {
 .symbol-icon {
   max-width: 64px;
 }
+.publication .errors {
+  color: #d20f39;
+}
+.publication .warnings {
+  color: #df8e1d;
+}
+.publication .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+button.link {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}

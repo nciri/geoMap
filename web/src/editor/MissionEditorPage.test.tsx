@@ -63,6 +63,10 @@ function serve(current = mission(), features = [feature()]) {
     http.get(`/api/missions/${id}`, () => HttpResponse.json(current)),
     http.get(`/api/missions/${id}/features`, () => HttpResponse.json(features)),
     http.get("/api/basemaps", () => HttpResponse.json([basemap()])),
+    http.get(`/api/missions/${id}/validation`, () =>
+      HttpResponse.json({ errors: [], warnings: [] }),
+    ),
+    http.get(`/api/missions/${id}/versions`, () => HttpResponse.json([])),
   );
 }
 
