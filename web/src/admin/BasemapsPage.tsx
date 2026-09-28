@@ -18,9 +18,12 @@ export function BasemapsPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!file) return;
-    setError(null);
     setNotice(null);
+    if (!file) {
+      setError("Sélectionnez un fichier PMTiles.");
+      return;
+    }
+    setError(null);
     setProgress(0);
     try {
       const saved = await uploadBasemap(id.trim(), name.trim(), file, setProgress);
@@ -60,6 +63,7 @@ export function BasemapsPage() {
           <input
             type="file"
             accept=".pmtiles"
+            required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
