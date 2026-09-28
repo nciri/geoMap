@@ -15,6 +15,7 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
   const [chosen, setChosen] = useState<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const enrolledIds = new Set(
     devices.data?.filter((d) => d.status === "ENROLLED").map((d) => d.id) ?? [],
   );
@@ -31,6 +32,7 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
   }
 
   async function save() {
+    setBusy(true);
     setError(null);
     setNotice(null);
     try {
@@ -38,6 +40,9 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
       await assignDevices(missionId, deviceIds);
       setChosen(null);
       setNotice("Affectation enregistrée.");
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
       await Promise.all(
         [
           ["assigned", missionId],
@@ -45,8 +50,7 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
           ["validation", missionId],
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
-    } catch (e) {
-      setError(errorMessage(e));
+      setBusy(false);
     }
   }
 
@@ -79,7 +83,10 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
           );
         })}
       </ul>
-      <button disabled={disabled || !devices.data || !assigned.data} onClick={() => void save()}>
+      <button
+        disabled={busy || disabled || !devices.data || !assigned.data}
+        onClick={() => void save()}
+      >
         Enregistrer l'affectation
       </button>
       {notice && <p role="status">{notice}</p>}

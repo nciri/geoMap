@@ -45,16 +45,22 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmWithdraw, setConfirmWithdraw] = useState(false);
+  const [busy, setBusy] = useState(false);
   const withdrawn = mission.status === "WITHDRAWN";
   const published = (versions.data?.length ?? 0) > 0;
   const nextVersion = Math.max(0, ...(versions.data ?? []).map((v) => v.version)) + 1;
   const blocked = !validation.data || validation.data.errors.length > 0;
 
   async function run(action: () => Promise<string | null>) {
+    setBusy(true);
     setError(null);
     setNotice(null);
     try {
       setNotice(await action());
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      // A refusal means the server's view changed too: refresh it so the French reason shows.
       await Promise.all(
         [
           ["mission", mission.id],
@@ -63,8 +69,7 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
           ["validation", mission.id],
         ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
-    } catch (e) {
-      setError(errorMessage(e));
+      setBusy(false);
     }
   }
 
@@ -105,7 +110,7 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
       ) : (
         <div className="actions">
           <button
-            disabled={blocked}
+            disabled={busy || blocked}
             onClick={() =>
               void run(async () => {
                 const v = await publishMission(mission.id);
@@ -117,6 +122,7 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
           </button>
           {published && (
             <button
+              disabled={busy}
               onClick={() =>
                 void run(async () => {
                   const file = await downloadPackage(mission.id);
@@ -132,6 +138,7 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
             (confirmWithdraw ? (
               <>
                 <button
+                  disabled={busy}
                   onClick={() =>
                     void run(async () => {
                       await withdrawMission(mission.id);

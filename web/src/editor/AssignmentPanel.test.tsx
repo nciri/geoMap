@@ -66,6 +66,49 @@ it("shows the server's refusal", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("mission is withdrawn");
 });
 
+it("refreshes the server's assignment after a refusal", async () => {
+  let reads = 0;
+  server.use(
+    http.get("/api/devices", () => HttpResponse.json([alpha, bravo, charlie])),
+    http.get(`/api/missions/${missionId}/devices`, () =>
+      HttpResponse.json(reads++ === 0 ? [alpha] : [alpha, bravo]),
+    ),
+    http.put(`/api/missions/${missionId}/devices`, () =>
+      HttpResponse.json({ status: 409, detail: "mission is withdrawn" }, { status: 409 }),
+    ),
+  );
+  renderWithProviders(<AssignmentPanel missionId={missionId} disabled={false} />);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "Enregistrer l'affectation" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent("mission is withdrawn");
+  await waitFor(() => expect(screen.getByLabelText(/Tablette Bravo/)).toBeChecked());
+});
+
+it("sends a single assignment when the button is clicked twice", async () => {
+  serve();
+  let calls = 0;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.put(`/api/missions/${missionId}/devices`, async () => {
+      calls++;
+      await held;
+      return HttpResponse.json([alpha]);
+    }),
+  );
+  renderWithProviders(<AssignmentPanel missionId={missionId} disabled={false} />);
+  const user = userEvent.setup();
+  await screen.findByLabelText(/Tablette Alpha/);
+  const save = screen.getByRole("button", { name: "Enregistrer l'affectation" });
+  await user.click(save);
+  await user.click(save);
+  await waitFor(() => expect(calls).toBe(1));
+  expect(save).toBeDisabled();
+  release();
+  expect(await screen.findByRole("status")).toHaveTextContent("Affectation enregistrée.");
+  expect(calls).toBe(1);
+});
+
 it("never resends a revoked device even if it was previously assigned", async () => {
   serve([alpha, charlie]);
   let body: unknown;

@@ -77,8 +77,19 @@ it("publishes a valid mission and shows the new version", async () => {
 });
 
 it("shows the server's refusal when publishing fails", async () => {
-  serve({ errors: [], warnings: [] });
+  let validations = 0;
   server.use(
+    http.get(`${base}/validation`, () =>
+      HttpResponse.json(
+        validations++ === 0
+          ? { errors: [], warnings: [] }
+          : {
+              errors: [{ code: "NO_RECIPIENT", message: "no enrolled device", featureId: null }],
+              warnings: [],
+            },
+      ),
+    ),
+    http.get(`${base}/versions`, () => HttpResponse.json([])),
     http.post(`${base}/publish`, () =>
       HttpResponse.json(
         { status: 409, detail: "mission is not publishable: NO_RECIPIENT" },
@@ -91,6 +102,31 @@ it("shows the server's refusal when publishing fails", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "mission is not publishable: NO_RECIPIENT",
   );
+  expect(await screen.findByText("Aucun terminal enrôlé affecté")).toBeInTheDocument();
+});
+
+it("sends a single publication when the button is clicked twice", async () => {
+  serve({ errors: [], warnings: [] });
+  let calls = 0;
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  server.use(
+    http.post(`${base}/publish`, async () => {
+      calls++;
+      await held;
+      return HttpResponse.json(v1, { status: 201 });
+    }),
+  );
+  panel();
+  const user = userEvent.setup();
+  const publish = await screen.findByRole("button", { name: "Publier la version 1" });
+  await user.click(publish);
+  await user.click(publish);
+  await waitFor(() => expect(calls).toBe(1));
+  expect(publish).toBeDisabled();
+  release();
+  expect(await screen.findByRole("status")).toHaveTextContent("Version 1 publiée");
+  expect(calls).toBe(1);
 });
 
 it("exports the latest package for an SD card", async () => {
