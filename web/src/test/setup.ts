@@ -1,10 +1,12 @@
 import "@testing-library/jest-dom/vitest";
-import { Blob } from "node:buffer";
+import { Blob, File } from "node:buffer";
 import { fetch, Headers, Request, Response } from "undici";
 
 // jsdom's Blob isn't readable by msw's XHR interceptor (it crashes rebuilding the request);
-// swap in undici's Fetch classes before msw loads, so its `HttpResponse` uses them too.
-Object.assign(globalThis, { Blob, Headers, Request, Response, fetch });
+// swap in undici's Fetch classes before msw loads, so its `HttpResponse` uses them too. jsdom's
+// File isn't an instance of this Blob either, so a File built from it serializes to the string
+// "[object File]" instead of its bytes when msw rebuilds the request — swap File in too.
+Object.assign(globalThis, { Blob, File, Headers, Request, Response, fetch });
 
 const { server } = await import("./server");
 

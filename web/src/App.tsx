@@ -3,7 +3,9 @@ import { createBrowserRouter, RouterProvider, useLocation, type RouteObject } fr
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RequireRole } from "./auth/AuthProvider";
 import { Layout } from "./Layout";
-import { MissionsPage } from "./missions/MissionsPage";
+import { Home } from "./Home";
+import { DevicesPage } from "./admin/DevicesPage";
+import { BasemapsPage } from "./admin/BasemapsPage";
 
 // The editor pulls in the map libraries, which the missions list does not need.
 const MissionEditorPage = lazy(() =>
@@ -27,11 +29,7 @@ export const routes: RouteObject[] = [
     children: [
       {
         path: "/",
-        element: (
-          <RequireRole role="planificateur">
-            <MissionsPage />
-          </RequireRole>
-        ),
+        element: <Home />,
       },
       {
         path: "/missions/:missionId",
@@ -41,6 +39,22 @@ export const routes: RouteObject[] = [
             <Suspense fallback={<p>Chargement…</p>}>
               <MissionEditorPage />
             </Suspense>
+          </RequireRole>
+        ),
+      },
+      {
+        path: "/admin/terminaux",
+        element: (
+          <RequireRole role="administrateur">
+            <DevicesPage />
+          </RequireRole>
+        ),
+      },
+      {
+        path: "/admin/fonds",
+        element: (
+          <RequireRole role="administrateur">
+            <BasemapsPage />
           </RequireRole>
         ),
       },

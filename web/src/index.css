@@ -159,3 +159,17 @@ button.link {
   padding: 0;
   text-decoration: underline;
 }
+.topbar nav {
+  display: flex;
+  gap: 1rem;
+}
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 40rem;
+}
+.admin-form label {
+  display: flex;
+  flex-direction: column;
+}
