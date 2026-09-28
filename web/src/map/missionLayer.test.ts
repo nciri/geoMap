@@ -43,11 +43,11 @@ it("flags pending suggestions and leaves rejected ones and the edited object out
   ]);
 });
 
-it("labels an unnamed APP-6D object with its SIDC", () => {
+it("labels objects with their name only (APP-6D names are drawn by the symbol layer)", () => {
   const [symbol] = toFeatureCollection([
     feature({ kind: "APP6", name: "", sidc: "10031000001211000000" }),
   ]).features;
-  expect(symbol.properties.label).toBe("10031000001211000000");
+  expect(symbol.properties.label).toBe("");
 });
 
 it("frames every visible object", () => {

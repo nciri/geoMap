@@ -6,9 +6,12 @@ import { fetchSymbolIcon, renderGraphic, type Feature } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import {
   bandOf,
+  FALLBACK_SOURCE,
   iconOffset,
+  pointFallbacks,
   pointSymbols,
   symbolKey,
+  symbolLabel,
   SYMBOL_SOURCE,
   TACTICAL_SOURCE,
   tacticalCollection,
@@ -25,9 +28,11 @@ export function useSymbolRendering(
   hiddenId: string | null,
 ): { error: string | null } {
   const [band, setBand] = useState<Band>("MID");
-  const [iconError, setIconError] = useState<string | null>(null);
+  const [iconErrors, setIconErrors] = useState(new Map<string, string>());
   const [offsets, setOffsets] = useState(new Map<string, [number, number]>());
-  const loading = useRef(new Set<string>());
+  // Per map: a download started for a map removed by a basemap switch must not stop the new
+  // map from loading the same icon.
+  const loading = useRef(new WeakMap<maplibregl.Map, Set<string>>());
 
   useEffect(() => {
     if (!map) return;
@@ -38,12 +43,15 @@ export function useSymbolRendering(
   }, [map]);
 
   useEffect(() => {
-    if (!map || !features) return;
+    if (!map || map._removed || !features) return;
+    let pending = loading.current.get(map);
+    if (!pending) loading.current.set(map, (pending = new Set()));
+    const inFlight = pending;
     for (const f of features) {
       if (f.kind !== "APP6" || !f.sidc || f.geometry.type !== "Point") continue;
       const key = symbolKey(f.sidc, f.modifiers);
-      if (map.hasImage(key) || loading.current.has(key)) continue;
-      loading.current.add(key);
+      if (map.hasImage(key) || inFlight.has(key)) continue;
+      inFlight.add(key);
       fetchSymbolIcon(f.sidc, f.modifiers ?? {})
         .then(async ({ blob, anchorX, anchorY }) => {
           const bitmap = await createImageBitmap(blob);
@@ -52,9 +60,19 @@ export function useSymbolRendering(
           setOffsets((current) =>
             new Map(current).set(key, iconOffset(anchorX, anchorY, bitmap.width, bitmap.height)),
           );
+          setIconErrors((current) => {
+            if (!current.has(key)) return current;
+            const next = new Map(current);
+            next.delete(key);
+            return next;
+          });
         })
-        .catch((e: unknown) => setIconError(`Symbole illisible : ${errorMessage(e)}`))
-        .finally(() => loading.current.delete(key));
+        .catch((e: unknown) =>
+          setIconErrors((current) =>
+            new Map(current).set(key, `Symbole illisible (${symbolLabel(f)}) : ${errorMessage(e)}`),
+          ),
+        )
+        .finally(() => inFlight.delete(key));
     }
   }, [map, features]);
 
@@ -70,7 +88,12 @@ export function useSymbolRendering(
   const rendered = renders.map((r) => r.data);
   useEffect(() => {
     if (!map || map._removed || !features) return;
-    map.getSource<GeoJSONSource>(SYMBOL_SOURCE)?.setData(pointSymbols(features, offsets, hiddenId));
+    // Offsets outlive a remounted map; only icons this map holds count as loaded.
+    const loaded = new Map([...offsets].filter(([key]) => map.hasImage(key)));
+    map.getSource<GeoJSONSource>(SYMBOL_SOURCE)?.setData(pointSymbols(features, loaded, hiddenId));
+    map
+      .getSource<GeoJSONSource>(FALLBACK_SOURCE)
+      ?.setData(pointFallbacks(features, loaded, hiddenId));
     const done = graphics.flatMap((f, i) => {
       const collection = rendered[i];
       return collection && f.id !== hiddenId ? [{ featureId: f.id, collection }] : [];
@@ -79,6 +102,7 @@ export function useSymbolRendering(
   });
 
   const graphicError = renders.find((r) => r.error)?.error;
+  const iconError = iconErrors.values().next().value ?? null;
   return {
     error:
       iconError ?? (graphicError ? `Graphisme illisible : ${errorMessage(graphicError)}` : null),

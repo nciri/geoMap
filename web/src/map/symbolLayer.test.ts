@@ -2,6 +2,7 @@ import { feature } from "../test/fixtures";
 import {
   bandOf,
   iconOffset,
+  pointFallbacks,
   pointSymbols,
   symbolKey,
   SYMBOL_LAYERS,
@@ -57,7 +58,7 @@ it("lists APP-6D points whose icon is ready, with their offset", () => {
   const key = symbolKey(unit.sidc!, unit.modifiers);
   const collection = pointSymbols([unit, line, feature()], new Map([[key, [0, -3]]]));
   expect(collection.features.map((f) => f.properties)).toEqual([
-    { id: "u", icon: key, offset: [0, -3], pending: false },
+    { id: "u", icon: key, offset: [0, -3], pending: false, label: "PC avancé" },
   ]);
   expect(pointSymbols([unit], new Map()).features).toEqual([]);
 });
@@ -91,4 +92,41 @@ it("labels tactical graphics with a shipped font", () => {
     layout?: Record<string, unknown>;
   };
   expect(MAP_FONTS).toContain((label.layout?.["text-font"] as string[])[0]);
+});
+
+it("keeps APP-6D points without a loaded icon on the map as named markers", () => {
+  const loaded = feature({ id: "ok", kind: "APP6", sidc: "10031000161211000000" });
+  const waiting = feature({ id: "w", kind: "APP6", name: "", sidc: "10031000001211000000" });
+  const pending = feature({
+    id: "p",
+    kind: "APP6",
+    sidc: "10031000001211000000",
+    suggestionStatus: "PENDING",
+  });
+  const rejected = feature({
+    id: "r",
+    kind: "APP6",
+    sidc: "10031000001211000000",
+    suggestionStatus: "REJECTED",
+  });
+  const hidden = feature({ id: "h", kind: "APP6", sidc: "10031000001211000000" });
+  const offsets = new Map<string, [number, number]>([[symbolKey(loaded.sidc!, null), [0, 0]]]);
+  const collection = pointFallbacks(
+    [loaded, waiting, pending, rejected, hidden, feature()],
+    offsets,
+    "h",
+  );
+  expect(collection.features.map((f) => f.properties)).toEqual([
+    { id: "w", label: "10031000001211000000", pending: false },
+    { id: "p", label: "PC avancé", pending: true },
+  ]);
+});
+
+it("names APP-6D icons under the symbol and never hides the icon for its label", () => {
+  const symbol = SYMBOL_LAYERS.find((l) => l.id === "mission-symbol") as {
+    layout?: Record<string, unknown>;
+  };
+  expect(symbol.layout?.["text-field"]).toEqual(["get", "label"]);
+  expect(symbol.layout?.["text-font"]).toEqual([MAP_FONTS[0]]);
+  expect(symbol.layout?.["text-optional"]).toBe(true);
 });

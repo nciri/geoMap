@@ -8,6 +8,7 @@ export type Band = "LOW" | "MID" | "HIGH";
 
 export const SYMBOL_SOURCE = "symbols";
 export const TACTICAL_SOURCE = "tactical";
+export const FALLBACK_SOURCE = "symbol-fallbacks";
 
 // Same limits as the server's RenderBand.forZoom; the zooms sent fall inside each band.
 export const ZOOM_FOR_BAND: Record<Band, number> = { LOW: 8, MID: 12, HIGH: 16 };
@@ -33,6 +34,20 @@ export function iconOffset(
   return [width / 2 - anchorX, height / 2 - anchorY];
 }
 
+type App6Point = Feature & { sidc: string; geometry: Point };
+
+const drawnPoints = (features: Feature[], hiddenId: string | null) =>
+  features.filter(
+    (f): f is App6Point =>
+      f.kind === "APP6" &&
+      !!f.sidc &&
+      f.geometry.type === "Point" &&
+      f.suggestionStatus !== "REJECTED" &&
+      f.id !== hiddenId,
+  );
+
+export const symbolLabel = (f: Feature) => f.name || (f.sidc ?? "");
+
 export function pointSymbols(
   features: Feature[],
   offsets: Map<string, [number, number]>,
@@ -40,9 +55,7 @@ export function pointSymbols(
 ): FeatureCollection<Point> {
   return {
     type: "FeatureCollection",
-    features: features.flatMap((f) => {
-      if (f.kind !== "APP6" || !f.sidc || f.geometry.type !== "Point") return [];
-      if (f.suggestionStatus === "REJECTED" || f.id === hiddenId) return [];
+    features: drawnPoints(features, hiddenId).flatMap((f) => {
       const key = symbolKey(f.sidc, f.modifiers);
       const offset = offsets.get(key);
       if (!offset) return [];
@@ -50,10 +63,38 @@ export function pointSymbols(
         {
           type: "Feature" as const,
           geometry: f.geometry,
-          properties: { id: f.id, icon: key, offset, pending: f.suggestionStatus === "PENDING" },
+          properties: {
+            id: f.id,
+            icon: key,
+            offset,
+            pending: f.suggestionStatus === "PENDING",
+            label: symbolLabel(f),
+          },
         },
       ];
     }),
+  };
+}
+
+// A unit must stay on the map while its icon loads or when it cannot be fetched.
+export function pointFallbacks(
+  features: Feature[],
+  offsets: Map<string, [number, number]>,
+  hiddenId: string | null = null,
+): FeatureCollection<Point> {
+  return {
+    type: "FeatureCollection",
+    features: drawnPoints(features, hiddenId)
+      .filter((f) => !offsets.has(symbolKey(f.sidc, f.modifiers)))
+      .map((f) => ({
+        type: "Feature" as const,
+        geometry: f.geometry,
+        properties: {
+          id: f.id,
+          label: symbolLabel(f),
+          pending: f.suggestionStatus === "PENDING",
+        },
+      })),
   };
 }
 
@@ -120,6 +161,31 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
     },
   },
   {
+    id: "mission-symbol-fallback",
+    type: "circle",
+    source: FALLBACK_SOURCE,
+    paint: {
+      "circle-radius": 6,
+      "circle-color": "#6c6f85",
+      "circle-stroke-color": "#ffffff",
+      "circle-stroke-width": 2,
+      "circle-opacity": ["case", ["get", "pending"], 0.6, 1],
+    },
+  },
+  {
+    id: "mission-symbol-fallback-label",
+    type: "symbol",
+    source: FALLBACK_SOURCE,
+    layout: {
+      "text-field": ["get", "label"],
+      "text-font": [MAP_FONTS[0]],
+      "text-size": LABEL_FONT_SIZE,
+      "text-offset": [0, 1.2],
+      "text-anchor": "top",
+    },
+    paint: { "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
+  },
+  {
     id: "mission-symbol",
     type: "symbol",
     source: SYMBOL_SOURCE,
@@ -127,16 +193,32 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
       "icon-image": ["get", "icon"],
       "icon-offset": ["get", "offset"],
       "icon-allow-overlap": true,
+      "text-field": ["get", "label"],
+      "text-font": [MAP_FONTS[0]],
+      "text-size": LABEL_FONT_SIZE,
+      // Below the 64 px icon, whose centre sits on the position.
+      "text-offset": [0, 2.8],
+      "text-anchor": "top",
+      "text-optional": true,
     },
-    paint: { "icon-opacity": ["case", ["get", "pending"], 0.6, 1] },
+    paint: {
+      "icon-opacity": ["case", ["get", "pending"], 0.6, 1],
+      "text-halo-color": "#ffffff",
+      "text-halo-width": 1.5,
+    },
   },
 ];
 
-export const SYMBOL_CLICKABLE_LAYERS = ["mission-symbol", "tactical-line"];
+export const SYMBOL_CLICKABLE_LAYERS = [
+  "mission-symbol",
+  "mission-symbol-fallback",
+  "tactical-line",
+];
 
 export function addSymbolLayers(map: maplibregl.Map): void {
   const empty = { type: "FeatureCollection" as const, features: [] };
   map.addSource(SYMBOL_SOURCE, { type: "geojson", data: empty });
   map.addSource(TACTICAL_SOURCE, { type: "geojson", data: empty });
+  map.addSource(FALLBACK_SOURCE, { type: "geojson", data: empty });
   for (const layer of SYMBOL_LAYERS) map.addLayer(layer);
 }

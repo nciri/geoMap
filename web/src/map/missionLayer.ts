@@ -45,7 +45,7 @@ export function toFeatureCollection(
         geometry: displayGeometry(f),
         properties: {
           id: f.id,
-          label: f.name || (f.kind === "APP6" ? (f.sidc ?? "") : ""),
+          label: f.name,
           color: f.style?.color ?? DEFAULT_COLOR,
           pending: f.suggestionStatus === "PENDING",
           kind: f.kind,
