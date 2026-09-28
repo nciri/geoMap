@@ -72,7 +72,14 @@ export function useDrawing(map: maplibregl.Map | null, handlers: Handlers) {
       }
     });
     drawRef.current = draw;
+    // A basemap switch removes this map before the next one loads and moves `map` state on; until
+    // then TerraDraw would write to the removed map's sources and throw.
+    const release = () => {
+      if (drawRef.current === draw) drawRef.current = null;
+    };
+    map.once("remove", release);
     return () => {
+      map.off("remove", release);
       // A basemap change remounts MapView, which removes this map before `map` state moves on;
       // unregistering layers from a removed map throws.
       if (!map._removed) draw.stop();
