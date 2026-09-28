@@ -142,6 +142,8 @@ function FeatureDetails({
   const shownRadius = circle ? String(Math.round(feature.style.radiusMeters)) : "";
   const [radius, setRadius] = useState(shownRadius);
   const [confirming, setConfirming] = useState(false);
+  // Each save sends the whole object, so an older one landing last would undo a newer one.
+  const [saving, setSaving] = useState(false);
   const sidc = feature.kind === "APP6" ? feature.sidc : null;
   const symbol = useQuery({
     queryKey: ["symbol", sidc],
@@ -161,6 +163,7 @@ function FeatureDetails({
 
   function submit(event: FormEvent) {
     event.preventDefault();
+    setSaving(true);
     void onSave({
       name: name.trim(),
       description,
@@ -175,7 +178,7 @@ function FeatureDetails({
             : rebuilt,
         modifiers: filledModifiers(choice.modifiers),
       }),
-    });
+    }).finally(() => setSaving(false));
   }
 
   return (
@@ -224,7 +227,9 @@ function FeatureDetails({
           />
         </label>
       )}
-      <button type="submit">Enregistrer l'objet</button>
+      <button type="submit" disabled={saving}>
+        Enregistrer l'objet
+      </button>
       {confirming ? (
         <>
           <button type="button" onClick={() => void onDelete()}>

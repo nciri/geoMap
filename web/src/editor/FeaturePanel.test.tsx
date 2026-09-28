@@ -144,6 +144,28 @@ it("shows the server's reason when a change is refused", async () => {
   );
 });
 
+it("refuses a second save while one is in flight, so an older one cannot land last", async () => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let calls = 0;
+  server.use(
+    http.put(`${path}/c1`, async () => {
+      calls += 1;
+      await held;
+      return HttpResponse.json(circle);
+    }),
+  );
+  panel("c1");
+  const user = userEvent.setup();
+  const save = await screen.findByRole("button", { name: "Enregistrer l'objet" });
+  await user.click(save);
+  await waitFor(() => expect(save).toBeDisabled());
+  await user.click(save);
+  release();
+  await waitFor(() => expect(save).toBeEnabled());
+  expect(calls).toBe(1);
+});
+
 it("sets a circle's radius from the panel and keeps its centre", async () => {
   let body: Partial<Feature> | undefined;
   server.use(
