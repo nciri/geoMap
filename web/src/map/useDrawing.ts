@@ -95,7 +95,7 @@ export function useDrawing(map: maplibregl.Map | null, handlers: Handlers) {
     const draw = drawRef.current;
     const editable = toDrawFeature(feature);
     if (!draw) return "Carte non prête.";
-    if (!editable) return "Seuls les objets génériques se modifient sur la carte.";
+    if (!editable) return "Cet objet ne se modifie pas sur la carte.";
     draw.clear();
     const [result] = draw.addFeatures([editable]);
     if (!result?.valid) return `Géométrie non modifiable : ${result?.reason ?? "invalide"}`;

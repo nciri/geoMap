@@ -192,3 +192,88 @@ it("keeps a drawn circle's exact radius when only renaming it", async () => {
   await user.click(screen.getByRole("button", { name: "Enregistrer l'objet" }));
   await waitFor(() => expect(body?.style).toEqual({ radiusMeters: 1234.5, color: DEFAULT_COLOR }));
 });
+
+it("changes an APP-6D object's identity and designation, keeping its geometry", async () => {
+  const unit = feature({
+    id: "u1",
+    name: "1ER RI",
+    kind: "APP6",
+    sidc: "10031000161211000000",
+    modifiers: { T: "1ER RI" },
+  });
+  let body: Partial<Feature> | undefined;
+  server.use(
+    http.get("/api/symbols/10031000161211000000", () =>
+      HttpResponse.json({
+        basicId: "10121100",
+        name: "Infantry",
+        path: "Land Unit / Movement and Maneuver",
+        geometry: "POINT",
+        minPoints: 1,
+        maxPoints: 1,
+        modifiers: ["T", "H"],
+      }),
+    ),
+    http.get("/api/symbols/:sidc/icon.png", () =>
+      HttpResponse.arrayBuffer(new Uint8Array([1]).buffer, {
+        headers: { "X-Anchor-X": "1", "X-Anchor-Y": "1" },
+      }),
+    ),
+    http.put(`${path}/u1`, async ({ request }) => {
+      body = (await request.json()) as Partial<Feature>;
+      return HttpResponse.json(unit);
+    }),
+    http.get(path, () => HttpResponse.json([])),
+  );
+  renderWithProviders(
+    <FeaturePanel missionId={missionId} features={[unit]} selectedId="u1" onSelect={vi.fn()} />,
+  );
+  const user = userEvent.setup();
+  await user.selectOptions(await screen.findByLabelText("Identité"), "6");
+  const designation = screen.getByLabelText("Désignation");
+  await user.clear(designation);
+  await user.type(designation, "2E RI");
+  await user.click(screen.getByRole("button", { name: "Enregistrer l'objet" }));
+  await waitFor(() =>
+    expect(body).toMatchObject({
+      kind: "APP6",
+      geometry: unit.geometry,
+      sidc: "10061000161211000000",
+      modifiers: { T: "2E RI" },
+    }),
+  );
+});
+
+it("keeps an APP-6D object's stored SIDC when only its name changes", async () => {
+  // Status "planned" (digit 7) and a headquarters flag (digit 8), which the form does not edit.
+  const unit = feature({ id: "u2", kind: "APP6", sidc: "10031120161211000000", modifiers: null });
+  let body: Partial<Feature> | undefined;
+  server.use(
+    http.get("/api/symbols/10031120161211000000", () =>
+      HttpResponse.json({
+        basicId: "10121100",
+        name: "Infantry",
+        path: "Land Unit / Movement and Maneuver",
+        geometry: "LINE",
+        minPoints: 2,
+        maxPoints: 2,
+        modifiers: [],
+      }),
+    ),
+    http.put(`${path}/u2`, async ({ request }) => {
+      body = (await request.json()) as Partial<Feature>;
+      return HttpResponse.json(unit);
+    }),
+    http.get(path, () => HttpResponse.json([])),
+  );
+  renderWithProviders(
+    <FeaturePanel missionId={missionId} features={[unit]} selectedId="u2" onSelect={vi.fn()} />,
+  );
+  const user = userEvent.setup();
+  await screen.findByLabelText("Identité");
+  await user.type(screen.getByLabelText("Nom de l'objet"), " bis");
+  await user.click(screen.getByRole("button", { name: "Enregistrer l'objet" }));
+  await waitFor(() =>
+    expect(body).toMatchObject({ kind: "APP6", sidc: "10031120161211000000", modifiers: {} }),
+  );
+});

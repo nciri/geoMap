@@ -23,7 +23,8 @@ import {
   toFeatureCollection,
 } from "../map/missionLayer";
 import { useDrawing } from "../map/useDrawing";
-import { drawnToInput } from "../map/drawing";
+import { drawnToInput, modeFor } from "../map/drawing";
+import { SymbolPicker, type PlacedSymbol } from "../symbols/SymbolPicker";
 import { DrawToolbar } from "./DrawToolbar";
 import { FeaturePanel } from "./FeaturePanel";
 
@@ -42,16 +43,26 @@ export function MissionEditorPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedIdRef = useRef(selectedId);
   const [drawError, setDrawError] = useState<string | null>(null);
+  const [placing, setPlacing] = useState<PlacedSymbol | null>(null);
+  const placingRef = useRef(placing);
   const refreshFeatures = () =>
     queryClient.invalidateQueries({ queryKey: ["features", missionId] });
 
   const drawing = useDrawing(map, {
     onCreate: (drawn) => {
-      const converted = drawnToInput(drawn);
+      const placed = placingRef.current ?? undefined;
+      const converted = drawnToInput(drawn, undefined, placed);
       if ("error" in converted) return setDrawError(converted.error);
       setDrawError(null);
-      createFeature(missionId, converted.input).then(refreshFeatures, (e: unknown) =>
-        setDrawError(errorMessage(e)),
+      createFeature(missionId, converted.input).then(
+        () => {
+          if (placed) {
+            setPlacing(null);
+            drawing.stopEditing();
+          }
+          return refreshFeatures();
+        },
+        (e: unknown) => setDrawError(errorMessage(e)),
       );
     },
     onChange: (featureId, drawn) => {
@@ -81,13 +92,14 @@ export function MissionEditorPage() {
   function select(feature: Feature | null) {
     setSelectedId(feature?.id ?? null);
     setDrawError(null);
-    // Other kinds are not edited on the map, so the previously reshaped object must be released.
-    if (feature?.kind === "GENERIC") setDrawError(drawing.edit(feature));
+    // Deselecting must release the previously reshaped object.
+    if (feature) setDrawError(drawing.edit(feature));
     else drawing.stopEditing();
   }
 
   useEffect(() => {
     selectedIdRef.current = selectedId;
+    placingRef.current = placing;
   });
 
   useEffect(() => {
@@ -140,9 +152,26 @@ export function MissionEditorPage() {
           mode={drawing.mode}
           onMode={(next) => {
             setSelectedId(null);
+            setPlacing(null);
             drawing.setMode(next);
           }}
         />
+        <details>
+          <summary>Symbole APP-6D</summary>
+          <SymbolPicker
+            onPlace={(placed) => {
+              setSelectedId(null);
+              setPlacing(placed);
+              drawing.setMode(modeFor(placed.symbol.geometry));
+            }}
+          />
+          {placing && (
+            <p role="status">
+              Tracez « {placing.symbol.name.trim()} » sur la carte ({placing.symbol.minPoints} à{" "}
+              {placing.symbol.maxPoints} points).
+            </p>
+          )}
+        </details>
         {drawError && <p role="alert">{drawError}</p>}
         <FeaturePanel
           missionId={missionId}

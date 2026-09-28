@@ -2,7 +2,8 @@ import type { GeoJSONStoreFeatures } from "terra-draw";
 import type { Point } from "geojson";
 import { feature } from "../test/fixtures";
 import { circlePolygon, distanceMeters, type Position } from "./geodesy";
-import { drawnToInput, toDrawFeature, toFeatureInput } from "./drawing";
+import type { SymbolInfo } from "../api/geomap";
+import { controlPointCount, drawnToInput, modeFor, toDrawFeature, toFeatureInput } from "./drawing";
 
 const drawn = (geometry: GeoJSONStoreFeatures["geometry"], mode: string, extra = {}) =>
   ({
@@ -81,7 +82,6 @@ it("maps saved geometries to their drawing mode", () => {
     },
   });
   expect(toDrawFeature(line)?.properties.mode).toBe("linestring");
-  expect(toDrawFeature(feature({ kind: "APP6", sidc: "10031000001211000000" }))).toBeNull();
 });
 
 it("reports a degenerate circle in French instead of throwing", () => {
@@ -117,4 +117,82 @@ it("opens a saved zone as a Terra Draw polygon with coordinates it accepts", () 
       [2.123456789, 48.1],
     ],
   ]);
+});
+
+const battlePosition: SymbolInfo = {
+  basicId: "25151200",
+  name: "Battle Position",
+  path: "Control Measure / Maneuver Areas",
+  geometry: "AREA",
+  minPoints: 3,
+  maxPoints: 50,
+  modifiers: ["B", "T"],
+};
+const placed = { symbol: battlePosition, sidc: "10032500001512000000", modifiers: { T: "BP1" } };
+const square = {
+  type: "Polygon" as const,
+  coordinates: [
+    [
+      [2, 48],
+      [3, 48],
+      [3, 49],
+      [2, 49],
+      [2, 48],
+    ],
+  ],
+};
+
+it("maps symbol geometries to drawing modes", () => {
+  expect(modeFor("POINT")).toBe("point");
+  expect(modeFor("LINE")).toBe("linestring");
+  expect(modeFor("AREA")).toBe("polygon");
+});
+
+it("counts control points, not the closing vertex", () => {
+  expect(controlPointCount(square)).toBe(4);
+  expect(controlPointCount({ type: "Point", coordinates: [2, 48] })).toBe(1);
+});
+
+it("turns a drawn shape into the placed APP-6D symbol", () => {
+  expect(drawnToInput(drawn(square, "polygon"), undefined, placed)).toEqual({
+    input: {
+      kind: "APP6",
+      geometry: square,
+      name: "",
+      description: "",
+      style: null,
+      sidc: "10032500001512000000",
+      modifiers: { T: "BP1" },
+    },
+  });
+});
+
+it("refuses a symbol drawn with too few points, in French", () => {
+  const needsFive = { ...placed, symbol: { ...battlePosition, minPoints: 5 } };
+  expect(drawnToInput(drawn(square, "polygon"), undefined, needsFive)).toEqual({
+    error: "Ce symbole demande de 5 à 50 points (4 tracés).",
+  });
+});
+
+it("keeps kind, SIDC and modifiers when an APP-6D object is reshaped", () => {
+  const base = feature({
+    kind: "APP6",
+    sidc: "10032500001512000000",
+    modifiers: { T: "BP1" },
+    name: "BP nord",
+    geometry: square,
+  });
+  expect(drawnToInput(drawn(square, "polygon"), base)).toMatchObject({
+    input: {
+      kind: "APP6",
+      sidc: "10032500001512000000",
+      modifiers: { T: "BP1" },
+      name: "BP nord",
+    },
+  });
+});
+
+it("opens an APP-6D object for reshaping in its geometry's mode", () => {
+  const point = feature({ kind: "APP6", sidc: "10031000161211000000" });
+  expect(toDrawFeature(point)?.properties.mode).toBe("point");
 });

@@ -125,3 +125,18 @@ td {
 .toolbar [aria-pressed="true"] {
   font-weight: bold;
 }
+.symbol-picker button,
+.symbol-picker small {
+  display: block;
+  text-align: left;
+}
+.symbol-picker .selected {
+  font-weight: bold;
+}
+.symbol-fields label {
+  display: flex;
+  flex-direction: column;
+}
+.symbol-icon {
+  max-width: 64px;
+}

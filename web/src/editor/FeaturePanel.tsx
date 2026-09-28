@@ -1,14 +1,18 @@
 import { useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   acceptFeature,
   deleteFeature,
+  describeSymbol,
   rejectFeature,
   updateFeature,
   type Feature,
 } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { DEFAULT_COLOR, isCircle } from "../map/missionLayer";
+import { buildSidc, filledModifiers, hasEchelon, parseSidc } from "../symbols/sidc";
+import { SymbolFields, type SymbolChoice } from "../symbols/SymbolFields";
+import { SymbolIcon } from "../symbols/SymbolIcon";
 
 interface Props {
   missionId: string;
@@ -94,8 +98,8 @@ export function FeaturePanel({ missionId, features, selectedId, onSelect }: Prop
                         ...(changes.radiusMeters ? { radiusMeters: changes.radiusMeters } : {}),
                       }
                     : selected.style,
-                sidc: selected.sidc,
-                modifiers: selected.modifiers,
+                sidc: changes.sidc ?? selected.sidc,
+                modifiers: changes.modifiers ?? selected.modifiers,
               }),
             )
           }
@@ -116,6 +120,8 @@ interface Changes {
   description: string;
   color: string;
   radiusMeters?: number;
+  sidc?: string;
+  modifiers?: Record<string, string>;
 }
 
 function FeatureDetails({
@@ -136,6 +142,22 @@ function FeatureDetails({
   const shownRadius = circle ? String(Math.round(feature.style.radiusMeters)) : "";
   const [radius, setRadius] = useState(shownRadius);
   const [confirming, setConfirming] = useState(false);
+  const sidc = feature.kind === "APP6" ? feature.sidc : null;
+  const symbol = useQuery({
+    queryKey: ["symbol", sidc],
+    queryFn: () => describeSymbol(sidc!),
+    enabled: !!sidc,
+  });
+  const [original] = useState(() => parseSidc(sidc ?? ""));
+  const [choice, setChoice] = useState<SymbolChoice>({
+    identity: original.identity,
+    echelon: original.echelon,
+    modifiers: feature.modifiers ?? {},
+  });
+  const info = symbol.data;
+  const rebuilt =
+    info &&
+    buildSidc(info.basicId, choice.identity, hasEchelon(info.basicId) ? choice.echelon : "00");
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -144,6 +166,15 @@ function FeatureDetails({
       description,
       color,
       ...(radius !== shownRadius ? { radiusMeters: Number(radius) } : {}),
+      ...(rebuilt && {
+        // buildSidc zeroes the status, HQ and modifier digits: keep the stored code unless the
+        // user changed what the form edits.
+        sidc:
+          choice.identity === original.identity && choice.echelon === original.echelon
+            ? sidc!
+            : rebuilt,
+        modifiers: filledModifiers(choice.modifiers),
+      }),
     });
   }
 
@@ -166,6 +197,19 @@ function FeatureDetails({
           Couleur
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
+      )}
+      {sidc && symbol.error && <p role="alert">{errorMessage(symbol.error)}</p>}
+      {info && rebuilt && (
+        <>
+          <SymbolFields symbol={info} {...choice} onChange={setChoice} />
+          {info.geometry === "POINT" && (
+            <SymbolIcon
+              sidc={rebuilt}
+              modifiers={filledModifiers(choice.modifiers)}
+              alt={`Aperçu ${info.name.trim()}`}
+            />
+          )}
+        </>
       )}
       {circle && (
         <label>
