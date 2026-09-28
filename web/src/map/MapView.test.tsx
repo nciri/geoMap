@@ -5,6 +5,7 @@ const pmtiles = vi.hoisted(() => ({ tiles: new Map<string, unknown>() }));
 
 vi.mock("maplibre-gl", () => ({
   addProtocol: vi.fn(),
+  setWorkerUrl: vi.fn(),
   Map: class {
     on() {}
     addControl() {}

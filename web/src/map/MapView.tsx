@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { FetchSource, PMTiles, Protocol } from "pmtiles";
 import { tileHeaders } from "../auth/session";
 import { errorMessage } from "../api/client";
@@ -8,6 +9,10 @@ import { absoluteTilesUrl, basemapStyle } from "./style";
 import { CoordinateReadout } from "./CoordinateReadout";
 
 export type LngLatBounds2 = [[number, number], [number, number]];
+
+// MapLibre otherwise looks for its worker next to its own module, a file the bundle never emits;
+// bundling it keeps it same-origin, which the air-gapped deployment needs.
+maplibregl.setWorkerUrl(workerUrl);
 
 const protocol = new Protocol({ metadata: true });
 maplibregl.addProtocol("pmtiles", protocol.tile);
