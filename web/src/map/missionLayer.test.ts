@@ -3,6 +3,7 @@ import { feature } from "../test/fixtures";
 import { distanceMeters, type Position } from "./geodesy";
 import {
   boundsOf,
+  CLICKABLE_LAYERS,
   DEFAULT_COLOR,
   isCircle,
   MISSION_LAYERS,
@@ -16,8 +17,8 @@ it("draws generic objects with their colour and name", () => {
     feature({ id: "b", name: "" }),
   ]);
   expect(collection.features.map((f) => f.properties)).toEqual([
-    { id: "a", label: "PC", color: "#40a02b", pending: false },
-    { id: "b", label: "", color: DEFAULT_COLOR, pending: false },
+    { id: "a", label: "PC", color: "#40a02b", pending: false, kind: "GENERIC" },
+    { id: "b", label: "", color: DEFAULT_COLOR, pending: false, kind: "GENERIC" },
   ]);
 });
 
@@ -90,4 +91,17 @@ it("recognises a circle only as a point with a positive radius", () => {
     style: { radiusMeters: 250 },
   });
   expect(isCircle(line)).toBe(false);
+});
+
+it("tags objects with their kind and keeps APP-6D control lines clickable", () => {
+  const collection = toFeatureCollection([
+    feature({ id: "g" }),
+    feature({ id: "a", kind: "APP6", sidc: "10031000161211000000" }),
+  ]);
+  expect(collection.features.map((f) => [f.properties.id, f.properties.kind])).toEqual([
+    ["g", "GENERIC"],
+    ["a", "APP6"],
+  ]);
+  expect(MISSION_LAYERS.map((l) => l.id)).toContain("mission-app6-control");
+  expect(CLICKABLE_LAYERS).toContain("mission-app6-control");
 });

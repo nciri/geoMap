@@ -1,7 +1,7 @@
 import type * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
 import type { FeatureCollection, Geometry as GeoGeometry, Point } from "geojson";
-import type { Feature } from "../api/geomap";
+import type { Feature, FeatureKind } from "../api/geomap";
 import { circlePolygon, type Position } from "./geodesy";
 import type { LngLatBounds2 } from "./MapView";
 import { MAP_FONTS } from "./style";
@@ -15,6 +15,7 @@ interface MissionFeatureProperties {
   label: string;
   color: string;
   pending: boolean;
+  kind: FeatureKind;
 }
 
 const isVisible = (f: Feature) => f.suggestionStatus !== "REJECTED";
@@ -47,6 +48,7 @@ export function toFeatureCollection(
           label: f.name || (f.kind === "APP6" ? (f.sidc ?? "") : ""),
           color: f.style?.color ?? DEFAULT_COLOR,
           pending: f.suggestionStatus === "PENDING",
+          kind: f.kind,
         },
       })),
   };
@@ -67,6 +69,7 @@ const color: ExpressionSpecification = [
   SUGGESTION_COLOR,
   ["get", "color"],
 ];
+const generic: ExpressionSpecification = ["==", ["get", "kind"], "GENERIC"];
 const lines: ExpressionSpecification = [
   "in",
   ["geometry-type"],
@@ -78,28 +81,28 @@ export const MISSION_LAYERS: LayerSpecification[] = [
     id: "mission-fill",
     type: "fill",
     source: MISSION_SOURCE,
-    filter: ["==", ["geometry-type"], "Polygon"],
+    filter: ["all", generic, ["==", ["geometry-type"], "Polygon"]],
     paint: { "fill-color": color, "fill-opacity": 0.2 },
   },
   {
     id: "mission-line",
     type: "line",
     source: MISSION_SOURCE,
-    filter: ["all", lines, ["!", ["get", "pending"]]],
+    filter: ["all", generic, lines, ["!", ["get", "pending"]]],
     paint: { "line-color": color, "line-width": 3 },
   },
   {
     id: "mission-line-pending",
     type: "line",
     source: MISSION_SOURCE,
-    filter: ["all", lines, ["get", "pending"]],
+    filter: ["all", generic, lines, ["get", "pending"]],
     paint: { "line-color": color, "line-width": 3, "line-dasharray": [2, 2] },
   },
   {
     id: "mission-point",
     type: "circle",
     source: MISSION_SOURCE,
-    filter: ["==", ["geometry-type"], "Point"],
+    filter: ["all", generic, ["==", ["geometry-type"], "Point"]],
     paint: {
       "circle-radius": 6,
       "circle-color": color,
@@ -108,9 +111,17 @@ export const MISSION_LAYERS: LayerSpecification[] = [
     },
   },
   {
+    id: "mission-app6-control",
+    type: "line",
+    source: MISSION_SOURCE,
+    filter: ["all", ["==", ["get", "kind"], "APP6"], lines],
+    paint: { "line-color": "#6c6f85", "line-width": 1, "line-dasharray": [2, 2] },
+  },
+  {
     id: "mission-label",
     type: "symbol",
     source: MISSION_SOURCE,
+    filter: generic,
     layout: {
       "text-field": ["get", "label"],
       "text-font": [MAP_FONTS[0]],
@@ -127,6 +138,7 @@ export const CLICKABLE_LAYERS = [
   "mission-line",
   "mission-line-pending",
   "mission-point",
+  "mission-app6-control",
 ];
 
 export function addMissionLayers(map: maplibregl.Map): void {

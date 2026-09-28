@@ -22,6 +22,8 @@ import {
   MISSION_SOURCE,
   toFeatureCollection,
 } from "../map/missionLayer";
+import { addSymbolLayers, SYMBOL_CLICKABLE_LAYERS } from "../map/symbolLayer";
+import { useSymbolRendering } from "../map/useSymbolRendering";
 import { useDrawing } from "../map/useDrawing";
 import { drawnToInput, modeFor } from "../map/drawing";
 import { SymbolPicker, type PlacedSymbol } from "../symbols/SymbolPicker";
@@ -105,16 +107,19 @@ export function MissionEditorPage() {
   useEffect(() => {
     if (!map) return;
     const onClick = (e: maplibregl.MapLayerMouseEvent) => {
-      const id = e.features?.[0]?.properties?.id as string | undefined;
+      const properties = e.features?.[0]?.properties;
+      const id = (properties?.id ?? properties?.featureId) as string | undefined;
       const clicked = id ? features.data?.find((f) => f.id === id) : undefined;
       // Drawing modes own the clicks; in select mode a click switches to another object.
       if (clicked && (drawing.mode === "static" || drawing.mode === "select")) select(clicked);
     };
-    map.on("click", CLICKABLE_LAYERS, onClick);
-    return () => void map.off("click", CLICKABLE_LAYERS, onClick);
+    const layers = [...CLICKABLE_LAYERS, ...SYMBOL_CLICKABLE_LAYERS];
+    map.on("click", layers, onClick);
+    return () => void map.off("click", layers, onClick);
   });
 
   const editingId = drawing.mode === "select" ? selectedId : null;
+  const symbols = useSymbolRendering(map, features.data, editingId);
   useEffect(() => {
     // The previous map lingers here, already removed, until the remounted MapView loads.
     if (!map || map._removed || !features.data) return;
@@ -173,6 +178,7 @@ export function MissionEditorPage() {
           )}
         </details>
         {drawError && <p role="alert">{drawError}</p>}
+        {symbols.error && <p role="alert">{symbols.error}</p>}
         <FeaturePanel
           missionId={missionId}
           features={features.data}
@@ -186,6 +192,7 @@ export function MissionEditorPage() {
         initialBounds={boundsOf(features.data)}
         onReady={(ready) => {
           addMissionLayers(ready);
+          addSymbolLayers(ready);
           setMap(ready);
         }}
       />
