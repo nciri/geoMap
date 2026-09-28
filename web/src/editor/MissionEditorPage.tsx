@@ -29,6 +29,7 @@ import { drawnToInput, modeFor } from "../map/drawing";
 import { SymbolPicker, type PlacedSymbol } from "../symbols/SymbolPicker";
 import { DrawToolbar } from "./DrawToolbar";
 import { FeaturePanel } from "./FeaturePanel";
+import { AssignmentPanel } from "./AssignmentPanel";
 import { PublicationPanel } from "./PublicationPanel";
 
 export function MissionEditorPage() {
@@ -186,6 +187,7 @@ export function MissionEditorPage() {
           selectedId={selectedId}
           onSelect={select}
         />
+        <AssignmentPanel missionId={missionId} disabled={current.status === "WITHDRAWN"} />
         <PublicationPanel
           mission={current}
           revision={`${mission.dataUpdatedAt}-${features.dataUpdatedAt}`}
