@@ -31,6 +31,7 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
 
   useEffect(() => {
     let disposed = false;
+    let tiles: PMTiles | null = null;
     const map = new maplibregl.Map({
       container: container.current!,
       style: basemapStyle(basemapId),
@@ -45,7 +46,7 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
     if (bounds) map.fitBounds(bounds, { padding: 60, maxZoom: 15, animate: false });
     if (basemapId) {
       // The shared Headers object carries the current token; pmtiles reads it on every request.
-      const tiles = new PMTiles(new FetchSource(absoluteTilesUrl(basemapId), tileHeaders));
+      tiles = new PMTiles(new FetchSource(absoluteTilesUrl(basemapId), tileHeaders));
       protocol.add(tiles);
       tiles.getHeader().then(
         (header) => {
@@ -67,6 +68,9 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
     return () => {
       disposed = true;
       map.remove();
+      // pmtiles 4.5 has no removal method; its registry is a public Map keyed by source.
+      const key = tiles?.source.getKey();
+      if (key && protocol.tiles.get(key) === tiles) protocol.tiles.delete(key);
     };
   }, [basemapId]);
 
