@@ -38,9 +38,10 @@ export default defineConfig({
       },
     },
     {
-      command: "npm run dev -- --port 5173 --strictPort",
+      // The production bundle, as deployed; vite preview reuses server.proxy for /api.
+      command: "npm run build && npx vite preview --port 5173 --strictPort",
       url: "http://localhost:5173",
-      timeout: 60_000,
+      timeout: 120_000,
       env: { GEOMAP_DEV_API_PROXY: "http://localhost:58080" },
     },
   ],

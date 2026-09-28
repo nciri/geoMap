@@ -1,8 +1,9 @@
 import { generateKeyPairSync, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { expect, test, type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { signIn } from "./helpers";
-import { api, mapLngLat, mapPoint } from "./map";
+import { api, boundsOf, mapLngLat, mapPoint, type BBox } from "./map";
 
 test.describe.configure({ mode: "serial" });
 
@@ -13,7 +14,7 @@ interface StoredFeature {
   id: string;
   kind: "GENERIC" | "APP6";
   geometry: { type: string; coordinates: unknown };
-  bbox: { minLon: number; minLat: number; maxLon: number; maxLat: number };
+  bbox: BBox;
   style: { radiusMeters?: number } | null;
 }
 
@@ -131,16 +132,7 @@ test("reshaping stays safe: Delete key, switching objects and basemap, circle ra
   const symbol = before.find((f) => f.kind === "APP6")!;
   await mapLngLat(
     page,
-    [
-      [
-        Math.min(...before.map((f) => f.bbox.minLon)),
-        Math.min(...before.map((f) => f.bbox.minLat)),
-      ],
-      [
-        Math.max(...before.map((f) => f.bbox.maxLon)),
-        Math.max(...before.map((f) => f.bbox.maxLat)),
-      ],
-    ],
+    boundsOf(before.map((f) => f.bbox)),
     symbol.geometry.coordinates as [number, number],
   );
   await expect(page.getByLabel("Identité")).toBeVisible();

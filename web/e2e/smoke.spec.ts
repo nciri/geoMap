@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 import { signIn } from "./helpers";
 
 test("a planner signs in through Keycloak and sees the missions", async ({ page }) => {
