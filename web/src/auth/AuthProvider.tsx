@@ -20,8 +20,9 @@ const SessionContext = createContext<Session | null>(null);
 
 function safeReturnPath(state: unknown): string {
   const returnTo = (state as { returnTo?: unknown } | undefined)?.returnTo;
-  // "//host" is a protocol-relative URL to another site, and browsers read "/\host" the same way.
-  return typeof returnTo === "string" && /^\/(?![/\\])/.test(returnTo) ? returnTo : "/";
+  // "//host" is a protocol-relative URL to another site; browsers read "/\host" the same way and
+  // drop tabs and newlines before parsing.
+  return typeof returnTo === "string" && /^\/(?![/\\\t\n\r])/.test(returnTo) ? returnTo : "/";
 }
 
 export function AuthProvider({ manager, children }: { manager: AuthManager; children: ReactNode }) {

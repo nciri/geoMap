@@ -120,17 +120,21 @@ it("never returns to another site after the callback", async () => {
   expect(location.pathname).toBe("/");
 });
 
-it("never returns to another site through a backslash path", async () => {
-  history.replaceState(null, "", "/callback?code=abc&state=xyz");
-  const manager = fakeManager(null, { ...alice, state: { returnTo: "/\\evil.example/x" } } as User);
-  render(
-    <AuthProvider manager={manager}>
-      <Whoami />
-    </AuthProvider>,
-  );
-  await screen.findByRole("button", { name: "Alice Martin" });
-  expect(location.pathname).toBe("/");
-});
+// Browsers read "/\host" like "//host" and drop tabs and newlines before parsing.
+it.each(["/\\evil.example/x", "/\t/evil.example/x", "/\n/evil.example/x", "/\r/evil.example/x"])(
+  "never returns to another site through %j",
+  async (returnTo) => {
+    history.replaceState(null, "", "/callback?code=abc&state=xyz");
+    const manager = fakeManager(null, { ...alice, state: { returnTo } } as User);
+    render(
+      <AuthProvider manager={manager}>
+        <Whoami />
+      </AuthProvider>,
+    );
+    await screen.findByRole("button", { name: "Alice Martin" });
+    expect(location.pathname).toBe("/");
+  },
+);
 
 it("signs in again when the API answers 401", async () => {
   const manager = fakeManager(alice);

@@ -18,13 +18,15 @@ it("flags a removed map with _removed", () => {
     context: { gl: { getExtension: () => null } },
   };
   type Internals = { _setupPainter(this: { painter: unknown }): void };
-  vi.spyOn(maplibregl.Map.prototype as unknown as Internals, "_setupPainter").mockImplementation(
-    function (this: { painter: unknown }) {
+  const setupPainter = vi
+    .spyOn(maplibregl.Map.prototype as unknown as Internals, "_setupPainter")
+    .mockImplementation(function (this: { painter: unknown }) {
       this.painter = painter;
-    },
-  );
+    });
   const map = new maplibregl.Map({ container: document.createElement("div") });
   expect(map._removed).toBeFalsy();
   map.remove();
   expect(map._removed).toBe(true);
+  setupPainter.mockRestore();
+  vi.unstubAllGlobals();
 });

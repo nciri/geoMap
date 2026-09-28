@@ -131,10 +131,10 @@ function FeatureDetails({
   const [description, setDescription] = useState(feature.description);
   const [color, setColor] = useState(feature.style?.color ?? DEFAULT_COLOR);
   const circle = isCircle(feature);
-  // Drawn radii carry decimetres, which step=1 would reject and so block every save of the form.
-  const [radius, setRadius] = useState(
-    circle ? String(Math.round(feature.style.radiusMeters)) : "",
-  );
+  // Drawn radii carry decimetres, which step=1 would reject and so block every save of the form;
+  // the stored value is kept unless the field is edited.
+  const shownRadius = circle ? String(Math.round(feature.style.radiusMeters)) : "";
+  const [radius, setRadius] = useState(shownRadius);
   const [confirming, setConfirming] = useState(false);
 
   function submit(event: FormEvent) {
@@ -143,7 +143,7 @@ function FeatureDetails({
       name: name.trim(),
       description,
       color,
-      ...(circle ? { radiusMeters: Number(radius) } : {}),
+      ...(radius !== shownRadius ? { radiusMeters: Number(radius) } : {}),
     });
   }
 

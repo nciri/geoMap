@@ -5,6 +5,7 @@ import { server } from "../test/server";
 import { renderWithProviders } from "../test/render";
 import { feature } from "../test/fixtures";
 import type { Feature } from "../api/geomap";
+import { DEFAULT_COLOR } from "../map/missionLayer";
 import { FeaturePanel } from "./FeaturePanel";
 
 const missionId = "11111111-1111-4111-8111-111111111111";
@@ -171,4 +172,23 @@ it("offers no radius for objects that are not circles", async () => {
   panel("s1");
   await screen.findByLabelText("Nom de l'objet");
   expect(screen.queryByLabelText("Rayon (m)")).not.toBeInTheDocument();
+});
+
+it("keeps a drawn circle's exact radius when only renaming it", async () => {
+  let body: Partial<Feature> | undefined;
+  const drawn = feature({ id: "c2", name: "Cercle", style: { radiusMeters: 1234.5 } });
+  server.use(
+    http.get(path, () => HttpResponse.json([])),
+    http.put(`${path}/c2`, async ({ request }) => {
+      body = (await request.json()) as Partial<Feature>;
+      return HttpResponse.json(drawn);
+    }),
+  );
+  renderWithProviders(
+    <FeaturePanel missionId={missionId} features={[drawn]} selectedId="c2" onSelect={vi.fn()} />,
+  );
+  const user = userEvent.setup();
+  await user.type(await screen.findByLabelText("Nom de l'objet"), " Alpha");
+  await user.click(screen.getByRole("button", { name: "Enregistrer l'objet" }));
+  await waitFor(() => expect(body?.style).toEqual({ radiusMeters: 1234.5, color: DEFAULT_COLOR }));
 });
