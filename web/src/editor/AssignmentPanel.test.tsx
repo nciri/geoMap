@@ -66,6 +66,25 @@ it("shows the server's refusal", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("mission is withdrawn");
 });
 
+it("never resends a revoked device even if it was previously assigned", async () => {
+  serve([alpha, charlie]);
+  let body: unknown;
+  server.use(
+    http.put(`/api/missions/${missionId}/devices`, async ({ request }) => {
+      body = await request.json();
+      return HttpResponse.json([alpha, bravo]);
+    }),
+  );
+  renderWithProviders(<AssignmentPanel missionId={missionId} disabled={false} />);
+  const user = userEvent.setup();
+  const charlieCheckbox = await screen.findByLabelText(/Tablette Charlie — révoqué/);
+  expect(charlieCheckbox).not.toBeChecked();
+  expect(charlieCheckbox).toBeDisabled();
+  await user.click(screen.getByLabelText(/Tablette Bravo/));
+  await user.click(screen.getByRole("button", { name: "Enregistrer l'affectation" }));
+  await waitFor(() => expect(body).toEqual({ deviceIds: ["a", "b"] }));
+});
+
 it("explains what to do when no device exists", async () => {
   server.use(
     http.get("/api/devices", () => HttpResponse.json([])),

@@ -15,7 +15,13 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
   const [chosen, setChosen] = useState<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const selection = chosen ?? new Set(assigned.data?.map((d) => d.id) ?? []);
+  const enrolledIds = new Set(
+    devices.data?.filter((d) => d.status === "ENROLLED").map((d) => d.id) ?? [],
+  );
+  const assignedIds = new Set(assigned.data?.map((d) => d.id) ?? []);
+  // The server rejects any revoked id, so a device revoked after being assigned must never be
+  // resent — it starts out of the selection even though it is still in `assigned.data`.
+  const selection = chosen ?? new Set([...assignedIds].filter((id) => enrolledIds.has(id)));
 
   function toggle(id: string) {
     const next = new Set(selection);
@@ -28,7 +34,8 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
     setError(null);
     setNotice(null);
     try {
-      await assignDevices(missionId, [...selection].sort());
+      const deviceIds = [...selection].filter((id) => enrolledIds.has(id)).sort();
+      await assignDevices(missionId, deviceIds);
       setChosen(null);
       setNotice("Affectation enregistrée.");
       await Promise.all(
@@ -65,6 +72,7 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
                 />
                 {d.name}
                 {revoked && " — révoqué"}
+                {revoked && assignedIds.has(d.id) && " (retiré à l'enregistrement)"}
               </label>{" "}
               <small>dernier contact : {d.lastContact ? formatUtc(d.lastContact) : "jamais"}</small>
             </li>
