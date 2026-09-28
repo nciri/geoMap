@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listBasemaps, uploadBasemap } from "../api/geomap";
 import { errorMessage } from "../api/client";
@@ -12,6 +12,7 @@ export function BasemapsPage() {
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -28,6 +29,11 @@ export function BasemapsPage() {
     try {
       const saved = await uploadBasemap(id.trim(), name.trim(), file, setProgress);
       setNotice(`Fond de carte « ${saved.name} » importé.`);
+      // A file input cannot be controlled: clear its selection directly.
+      if (fileInput.current) fileInput.current.value = "";
+      setId("");
+      setName("");
+      setFile(null);
       await queryClient.invalidateQueries({ queryKey: ["basemaps"] });
     } catch (e) {
       setError(errorMessage(e));
@@ -62,6 +68,7 @@ export function BasemapsPage() {
           Fichier PMTiles
           <input
             type="file"
+            ref={fileInput}
             accept=".pmtiles"
             required
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}

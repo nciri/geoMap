@@ -43,6 +43,9 @@ it("uploads a PMTiles file under an id and a name", async () => {
   expect(await screen.findByRole("status")).toHaveTextContent(
     "Fond de carte « Zone Sud » importé.",
   );
+  expect(screen.getByLabelText("Identifiant")).toHaveValue("");
+  expect(screen.getByLabelText("Nom")).toHaveValue("");
+  expect((screen.getByLabelText("Fichier PMTiles") as HTMLInputElement).files).toHaveLength(0);
 });
 
 it("shows the server's refusal", async () => {
