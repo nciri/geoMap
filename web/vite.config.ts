@@ -19,6 +19,8 @@ export default defineConfig({
       },
     },
   },
+  // maplibre-gl 6 loads its worker from a sibling file that the dev dep optimizer does not copy.
+  optimizeDeps: { exclude: ["maplibre-gl"] },
   server: {
     // e2e points the proxy at its own server port so a local service on 8080 does not collide.
     proxy: { "/api": process.env.GEOMAP_DEV_API_PROXY ?? "http://localhost:8080" },
