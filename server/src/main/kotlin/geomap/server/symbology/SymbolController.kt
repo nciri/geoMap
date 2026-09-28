@@ -2,6 +2,7 @@ package geomap.server.symbology
 
 import geomap.server.mission.GeoJsonGeometry
 import geomap.server.web.InvalidInputException
+import geomap.server.web.NotFoundException
 import org.springframework.http.CacheControl
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -36,6 +37,11 @@ class SymbolController(
         if (limit !in 1..100) throw InvalidInputException("limit must be between 1 and 100")
         return catalog.search(q, limit)
     }
+
+    @GetMapping("/{sidc}")
+    fun describe(
+        @PathVariable sidc: String,
+    ): SymbolInfo = catalog.describe(sidc) ?: throw NotFoundException("unknown APP-6D symbol: $sidc")
 
     @GetMapping("/{sidc}/icon.png", produces = [MediaType.IMAGE_PNG_VALUE])
     fun icon(

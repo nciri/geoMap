@@ -26,7 +26,8 @@ class DeviceController(
     ): DeviceView = service.register(Actor.of(authentication), registration).view()
 
     @GetMapping("/api/devices")
-    @PreAuthorize("hasRole('administrateur')")
+    // Planners need the device list to assign missions; registering and revoking stay with administrators.
+    @PreAuthorize("hasAnyRole('planificateur', 'administrateur')")
     fun list(): List<DeviceView> = service.list().map { it.view() }
 
     @PostMapping("/api/devices/{id}/revoke")

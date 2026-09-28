@@ -98,8 +98,11 @@ class DeviceApiTest : IntegrationTest() {
     }
 
     @Test
-    fun `only an administrator manages devices`() {
+    fun `only an administrator registers or revokes, planners may list`() {
         register(who = planner()).andExpect { status { isForbidden() } }
-        mvc.get("/api/devices") { with(planner()) }.andExpect { status { isForbidden() } }
+        mvc.get("/api/devices") { with(planner()) }.andExpect { status { isOk() } }
+        mvc.post("/api/devices/${java.util.UUID.randomUUID()}/revoke") { with(planner()) }.andExpect {
+            status { isForbidden() }
+        }
     }
 }

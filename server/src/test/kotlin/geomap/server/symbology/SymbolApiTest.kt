@@ -73,6 +73,21 @@ class SymbolApiTest : IntegrationTest() {
     }
 
     @Test
+    fun `describes a symbol from its full SIDC`() {
+        mvc.get("/api/symbols/10031000161211000000") { with(planner()) }.andExpect {
+            status { isOk() }
+            jsonPath("$.basicId") { value("10121100") }
+            jsonPath("$.name") { value("Infantry") }
+            jsonPath("$.geometry") { value("POINT") }
+        }
+    }
+
+    @Test
+    fun `an unknown SIDC is not found`() {
+        mvc.get("/api/symbols/10039999999999990000") { with(planner()) }.andExpect { status { isNotFound() } }
+    }
+
+    @Test
     fun `needs the planner role`() {
         mvc.get("/api/symbols") { with(admin()) }.andExpect { status { isForbidden() } }
         mvc.get("/api/symbols").andExpect { status { isUnauthorized() } }
