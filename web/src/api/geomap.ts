@@ -1,5 +1,6 @@
 import type { FeatureCollection, LineString, Point, Polygon } from "geojson";
 import { api, apiResponse, uploadWithProgress } from "./client";
+import { filledModifiers as filled } from "../symbols/sidc";
 
 export type Geometry = Point | LineString | Polygon;
 export type MissionStatus = "DRAFT" | "PUBLISHED" | "WITHDRAWN";
@@ -158,9 +159,6 @@ export interface SymbolIconImage {
 }
 
 export type GraphicCollection = FeatureCollection;
-
-const filled = (modifiers: Record<string, string>) =>
-  Object.fromEntries(Object.entries(modifiers).filter(([, value]) => value.trim() !== ""));
 
 export const searchSymbols = (q: string, limit = 50) =>
   api<SymbolInfo[]>(`/api/symbols?q=${encodeURIComponent(q)}&limit=${limit}`);

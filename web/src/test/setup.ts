@@ -12,8 +12,8 @@ beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());
 
-// jsdom has no object URLs; components only need a stable string to put in <img src>.
-if (!URL.createObjectURL) {
-  URL.createObjectURL = () => "blob:test";
-  URL.revokeObjectURL = () => {};
-}
+// jsdom has no object URLs; components only need a stable string to put in <img src>. Vitest's
+// jsdom environment does define createObjectURL, but its compat shim assumes jsdom's own Blob
+// impl and crashes on the undici Blob swapped in above, so the stub replaces it unconditionally.
+URL.createObjectURL = () => "blob:test";
+URL.revokeObjectURL = () => {};
