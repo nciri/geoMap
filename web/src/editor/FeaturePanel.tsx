@@ -10,7 +10,7 @@ import {
 } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { DEFAULT_COLOR, isCircle } from "../map/missionLayer";
-import { buildSidc, filledModifiers, hasEchelon, parseSidc } from "../symbols/sidc";
+import { filledModifiers, hasEchelon, parseSidc, withIdentityAndEchelon } from "../symbols/sidc";
 import { SymbolFields, type SymbolChoice } from "../symbols/SymbolFields";
 import { SymbolIcon } from "../symbols/SymbolIcon";
 
@@ -150,16 +150,18 @@ function FeatureDetails({
     queryFn: () => describeSymbol(sidc!),
     enabled: !!sidc,
   });
-  const [original] = useState(() => parseSidc(sidc ?? ""));
-  const [choice, setChoice] = useState<SymbolChoice>({
-    identity: original.identity,
-    echelon: original.echelon,
-    modifiers: feature.modifiers ?? {},
+  const [choice, setChoice] = useState<SymbolChoice>(() => {
+    const { identity, echelon } = parseSidc(sidc ?? "");
+    return { identity, echelon, modifiers: feature.modifiers ?? {} };
   });
   const info = symbol.data;
   const rebuilt =
     info &&
-    buildSidc(info.basicId, choice.identity, hasEchelon(info.basicId) ? choice.echelon : "00");
+    withIdentityAndEchelon(
+      sidc!,
+      choice.identity,
+      hasEchelon(info.basicId) ? choice.echelon : null,
+    );
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -170,12 +172,7 @@ function FeatureDetails({
       color,
       ...(radius !== shownRadius ? { radiusMeters: Number(radius) } : {}),
       ...(rebuilt && {
-        // buildSidc zeroes the status, HQ and modifier digits: keep the stored code unless the
-        // user changed what the form edits.
-        sidc:
-          choice.identity === original.identity && choice.echelon === original.echelon
-            ? sidc!
-            : rebuilt,
+        sidc: rebuilt,
         modifiers: filledModifiers(choice.modifiers),
       }),
     }).finally(() => setSaving(false));

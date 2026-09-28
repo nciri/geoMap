@@ -44,6 +44,18 @@ export function buildSidc(basicId: string, identity: string, echelon = "00"): st
   return `100${identity}${basicId.slice(0, 2)}00${echelon}${basicId.slice(2)}0000`;
 }
 
+// Replaces only the digits the form edits: identity (4th) and, when given, echelon (9th-10th).
+export function withIdentityAndEchelon(
+  sidc: string,
+  identity: string,
+  echelon: string | null,
+): string {
+  const withIdentity = sidc.slice(0, 3) + identity + sidc.slice(4);
+  return echelon === null
+    ? withIdentity
+    : withIdentity.slice(0, 8) + echelon + withIdentity.slice(10);
+}
+
 export function parseSidc(sidc: string): { basicId: string; identity: string; echelon: string } {
   return {
     basicId: sidc.slice(4, 6) + sidc.slice(10, 16),

@@ -299,3 +299,44 @@ it("keeps an APP-6D object's stored SIDC when only its name changes", async () =
     expect(body).toMatchObject({ kind: "APP6", sidc: "10031120161211000000", modifiers: {} }),
   );
 });
+
+it("changes identity and echelon without touching the SIDC's other digits", async () => {
+  // Context, status, HQ and modifier digits the form does not edit.
+  const stored = "11031120161211000102";
+  const unit = feature({ id: "u3", kind: "APP6", sidc: stored, modifiers: null });
+  let body: Partial<Feature> | undefined;
+  const previewed: string[] = [];
+  server.use(
+    http.get(`/api/symbols/${stored}`, () =>
+      HttpResponse.json({
+        basicId: "10121100",
+        name: "Infantry",
+        path: "Land Unit / Movement and Maneuver",
+        geometry: "POINT",
+        minPoints: 1,
+        maxPoints: 1,
+        modifiers: [],
+      }),
+    ),
+    http.get("/api/symbols/:sidc/icon.png", ({ params }) => {
+      previewed.push(String(params.sidc));
+      return HttpResponse.arrayBuffer(new Uint8Array([1]).buffer, {
+        headers: { "X-Anchor-X": "1", "X-Anchor-Y": "1" },
+      });
+    }),
+    http.put(`${path}/u3`, async ({ request }) => {
+      body = (await request.json()) as Partial<Feature>;
+      return HttpResponse.json(unit);
+    }),
+    http.get(path, () => HttpResponse.json([])),
+  );
+  renderWithProviders(
+    <FeaturePanel missionId={missionId} features={[unit]} selectedId="u3" onSelect={vi.fn()} />,
+  );
+  const user = userEvent.setup();
+  await user.selectOptions(await screen.findByLabelText("Identité"), "6");
+  await user.selectOptions(screen.getByLabelText("Échelon"), "15");
+  await user.click(screen.getByRole("button", { name: "Enregistrer l'objet" }));
+  await waitFor(() => expect(body).toMatchObject({ sidc: "11061120151211000102" }));
+  expect(previewed[0]).toBe(stored);
+});

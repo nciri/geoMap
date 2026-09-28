@@ -6,6 +6,7 @@ import {
   hasEchelon,
   modifierLabel,
   parseSidc,
+  withIdentityAndEchelon,
 } from "./sidc";
 
 it("builds the verified infantry SIDCs", () => {
@@ -20,6 +21,12 @@ it("reads identity, echelon and basic id back from a SIDC", () => {
     identity: "6",
     echelon: "16",
   });
+});
+
+it("splices identity and echelon into a SIDC, keeping every other digit", () => {
+  // Context 1, status 1 (planned), HQ 2, modifiers 0102.
+  expect(withIdentityAndEchelon("11031120161211000102", "6", "15")).toBe("11061120151211000102");
+  expect(withIdentityAndEchelon("11031120161211000102", "5", null)).toBe("11051120161211000102");
 });
 
 it("offers an echelon for land units only", () => {
