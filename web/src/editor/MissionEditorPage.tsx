@@ -23,7 +23,7 @@ import {
   toFeatureCollection,
 } from "../map/missionLayer";
 import { useDrawing } from "../map/useDrawing";
-import { toFeatureInput } from "../map/drawing";
+import { drawnToInput } from "../map/drawing";
 import { DrawToolbar } from "./DrawToolbar";
 import { FeaturePanel } from "./FeaturePanel";
 
@@ -47,32 +47,43 @@ export function MissionEditorPage() {
 
   const drawing = useDrawing(map, {
     onCreate: (drawn) => {
+      const converted = drawnToInput(drawn);
+      if ("error" in converted) return setDrawError(converted.error);
       setDrawError(null);
-      createFeature(missionId, toFeatureInput(drawn)).then(refreshFeatures, (e: unknown) =>
+      createFeature(missionId, converted.input).then(refreshFeatures, (e: unknown) =>
         setDrawError(errorMessage(e)),
       );
     },
     onChange: (featureId, drawn) => {
       const base = features.data?.find((f) => f.id === featureId);
-      if (!base) return;
+      if (!base) {
+        select(null);
+        return setDrawError("Cet objet n'existe plus : il a été supprimé entre-temps.");
+      }
+      // Put the saved shape back so the map shows what the server holds, unless the user has
+      // moved on to another object meanwhile.
+      const restore = () => {
+        if (selectedIdRef.current === featureId) drawing.edit(base);
+      };
+      const converted = drawnToInput(drawn, base);
+      if ("error" in converted) {
+        setDrawError(converted.error);
+        return restore();
+      }
       setDrawError(null);
-      updateFeature(missionId, featureId, toFeatureInput(drawn, base)).then(
-        refreshFeatures,
-        (e: unknown) => {
-          setDrawError(errorMessage(e));
-          // Put the saved shape back so the map shows what the server holds, unless the user has
-          // moved on to another object meanwhile.
-          if (selectedIdRef.current === featureId) drawing.edit(base);
-        },
-      );
+      updateFeature(missionId, featureId, converted.input).then(refreshFeatures, (e: unknown) => {
+        setDrawError(errorMessage(e));
+        restore();
+      });
     },
   });
 
   function select(feature: Feature | null) {
     setSelectedId(feature?.id ?? null);
     setDrawError(null);
-    if (!feature) return drawing.stopEditing();
-    if (feature.kind === "GENERIC") setDrawError(drawing.edit(feature));
+    // Other kinds are not edited on the map, so the previously reshaped object must be released.
+    if (feature?.kind === "GENERIC") setDrawError(drawing.edit(feature));
+    else drawing.stopEditing();
   }
 
   useEffect(() => {
@@ -84,7 +95,8 @@ export function MissionEditorPage() {
     const onClick = (e: maplibregl.MapLayerMouseEvent) => {
       const id = e.features?.[0]?.properties?.id as string | undefined;
       const clicked = id ? features.data?.find((f) => f.id === id) : undefined;
-      if (clicked && drawing.mode === "static") select(clicked);
+      // Drawing modes own the clicks; in select mode a click switches to another object.
+      if (clicked && (drawing.mode === "static" || drawing.mode === "select")) select(clicked);
     };
     map.on("click", CLICKABLE_LAYERS, onClick);
     return () => void map.off("click", CLICKABLE_LAYERS, onClick);

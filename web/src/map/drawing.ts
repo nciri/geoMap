@@ -34,6 +34,18 @@ export function toFeatureInput(drawn: GeoJSONStoreFeatures, base?: Feature): Fea
   return { ...common, geometry: geometry as Geometry, style: color ? { color } : null };
 }
 
+// Called from Terra Draw's finish handler, where a thrown error would be uncaught and unseen.
+export function drawnToInput(
+  drawn: GeoJSONStoreFeatures,
+  base?: Feature,
+): { input: FeatureInput } | { error: string } {
+  try {
+    return { input: toFeatureInput(drawn, base) };
+  } catch (e) {
+    return { error: `Forme invalide : ${e instanceof Error ? e.message : String(e)}` };
+  }
+}
+
 export function toDrawFeature(feature: Feature): GeoJSONStoreFeatures | null {
   if (feature.kind !== "GENERIC") return null;
   const radius = feature.style?.radiusMeters;

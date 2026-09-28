@@ -47,7 +47,7 @@ export function circlePolygon(center: Position, radiusMeters: number, steps = 64
 export function circleFromRing(ring: Position[]): { center: Position; radiusMeters: number } {
   const vertices = ring.slice(0, -1);
   if (new Set(vertices.map(String)).size < 3) {
-    throw new Error("Cercle invalide : il faut au moins trois sommets distincts.");
+    throw new Error("un cercle demande au moins trois sommets distincts.");
   }
   const mercator = vertices.map(([lon, lat]) => [
     toRadians(lon),

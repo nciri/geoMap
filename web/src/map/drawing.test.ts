@@ -2,7 +2,7 @@ import type { GeoJSONStoreFeatures } from "terra-draw";
 import type { Point } from "geojson";
 import { feature } from "../test/fixtures";
 import { circlePolygon, distanceMeters, type Position } from "./geodesy";
-import { toDrawFeature, toFeatureInput } from "./drawing";
+import { drawnToInput, toDrawFeature, toFeatureInput } from "./drawing";
 
 const drawn = (geometry: GeoJSONStoreFeatures["geometry"], mode: string, extra = {}) =>
   ({
@@ -82,4 +82,13 @@ it("maps saved geometries to their drawing mode", () => {
   });
   expect(toDrawFeature(line)?.properties.mode).toBe("linestring");
   expect(toDrawFeature(feature({ kind: "APP6", sidc: "10031000001211000000" }))).toBeNull();
+});
+
+it("reports a degenerate circle in French instead of throwing", () => {
+  const point: Position = [2.35, 48.85];
+  const ring = drawn({ type: "Polygon", coordinates: [[point, point, point, point]] }, "circle");
+  expect(drawnToInput(ring)).toEqual({
+    error: "Forme invalide : un cercle demande au moins trois sommets distincts.",
+  });
+  expect(drawnToInput(drawn(circlePolygon(point, 500), "circle"))).toHaveProperty("input");
 });
