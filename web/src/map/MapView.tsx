@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import { FetchSource, PMTiles, Protocol } from "pmtiles";
 import { tileHeaders } from "../auth/session";
 import { errorMessage } from "../api/client";

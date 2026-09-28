@@ -53,6 +53,9 @@ it("creates a mission with a basemap and a UTC expiry", async () => {
     }),
   );
   expect(await screen.findByRole("link", { name: "Op Nord" })).toBeInTheDocument();
+  expect(screen.getByLabelText("Nom")).toHaveValue("");
+  expect(screen.getByLabelText("Fond de carte")).toHaveDisplayValue("— aucun —");
+  expect(screen.getByLabelText("Valide jusqu'au (UTC)")).toHaveValue("");
 });
 
 it("deletes a draft only after confirmation", async () => {
@@ -93,6 +96,8 @@ it("shows the server's reason when a deletion is refused", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "a published mission cannot be deleted; withdraw it instead",
   );
+  expect(within(row).getByRole("button", { name: "Confirmer la suppression" })).toBeInTheDocument();
+  expect(within(row).getByRole("button", { name: "Annuler" })).toBeInTheDocument();
 });
 
 it("shows the server's reason when a creation is refused", async () => {

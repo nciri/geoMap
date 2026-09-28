@@ -1,10 +1,14 @@
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RequireRole } from "./auth/AuthProvider";
 import { Layout } from "./Layout";
 import { MissionsPage } from "./missions/MissionsPage";
-import { MissionEditorPage } from "./editor/MissionEditorPage";
+
+// The editor pulls in the map libraries, which the missions list does not need.
+const MissionEditorPage = lazy(() =>
+  import("./editor/MissionEditorPage").then((m) => ({ default: m.MissionEditorPage })),
+);
 
 const queryClient = new QueryClient();
 
@@ -28,7 +32,9 @@ export function App() {
               path: "/missions/:missionId",
               element: (
                 <RequireRole role="planificateur">
-                  <MissionEditorPage />
+                  <Suspense fallback={<p>Chargement…</p>}>
+                    <MissionEditorPage />
+                  </Suspense>
                 </RequireRole>
               ),
             },

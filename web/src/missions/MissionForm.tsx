@@ -30,6 +30,7 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
       });
       if (!initial) {
         setName("");
+        setBasemapId("");
         setValidUntil("");
       }
     } catch (e) {
