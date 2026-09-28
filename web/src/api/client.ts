@@ -38,7 +38,6 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
   return (await response.json()) as T;
 }
 
-// fetch cannot report upload progress; basemaps weigh hundreds of MB.
 // fetch cannot report upload progress; basemaps weigh hundreds of MB, so the Blob
 // (a File, in practice) is handed to XHR as-is and streamed from disk by the browser.
 export function uploadWithProgress<T>(
