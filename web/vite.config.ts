@@ -21,7 +21,7 @@ export default defineConfig({
   },
   server: {
     // e2e points the proxy at its own server port so a local service on 8080 does not collide.
-    proxy: { "/api": process.env.GEOMAP_API_URL ?? "http://localhost:8080" },
+    proxy: { "/api": process.env.GEOMAP_DEV_API_PROXY ?? "http://localhost:8080" },
   },
   test: {
     environment: "jsdom",

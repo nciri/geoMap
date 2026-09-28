@@ -41,7 +41,7 @@ export default defineConfig({
       command: "npm run dev -- --port 5173 --strictPort",
       url: "http://localhost:5173",
       timeout: 60_000,
-      env: { GEOMAP_API_URL: "http://localhost:58080" },
+      env: { GEOMAP_DEV_API_PROXY: "http://localhost:58080" },
     },
   ],
 });

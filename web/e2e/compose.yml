@@ -1,7 +1,7 @@
 name: geomap-e2e
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.15-alpine
     environment:
       POSTGRES_DB: geomap
       POSTGRES_USER: geomap
@@ -13,8 +13,7 @@ services:
       interval: 2s
       retries: 30
   minio:
-    # Upstream stopped publishing minio/minio images; pgsty/minio is a maintained build of the same server.
-    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
     command: server /data
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
