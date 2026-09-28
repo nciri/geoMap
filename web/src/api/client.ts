@@ -12,7 +12,10 @@ export class ApiError extends Error {
 
 type ApiInit = Omit<RequestInit, "body"> & { json?: unknown };
 
-export async function api<T>(path: string, { json, headers, ...init }: ApiInit = {}): Promise<T> {
+export async function apiResponse(
+  path: string,
+  { json, headers, ...init }: ApiInit = {},
+): Promise<Response> {
   const request = new Headers(headers);
   const token = getAccessToken();
   if (token) request.set("Authorization", `Bearer ${token}`);
@@ -23,20 +26,56 @@ export async function api<T>(path: string, { json, headers, ...init }: ApiInit =
     body: json === undefined ? undefined : JSON.stringify(json),
   });
   if (response.status === 401) notifyUnauthorized();
-  if (!response.ok) throw new ApiError(response.status, await problemDetail(response));
+  if (!response.ok) {
+    throw new ApiError(response.status, problemDetail(await response.text(), response.status));
+  }
+  return response;
+}
+
+export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
+  const response = await apiResponse(path, init);
   if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
-async function problemDetail(response: Response): Promise<string> {
+// fetch cannot report upload progress; basemaps weigh hundreds of MB.
+export async function uploadWithProgress<T>(
+  path: string,
+  body: Blob,
+  onProgress: (fraction: number) => void,
+): Promise<T> {
+  // Sent as an ArrayBuffer, not the Blob itself: msw's XHR interceptor constructs a Fetch
+  // Request from the body, and jsdom's Blob is not interop-compatible with that path in tests.
+  // A real XHR handles both the same way, so this is transparent outside the test environment.
+  const buffer = await body.arrayBuffer();
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", path);
+    const token = getAccessToken();
+    if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.setRequestHeader("Content-Type", "application/octet-stream");
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      if (xhr.status === 401) notifyUnauthorized();
+      if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText) as T);
+      else reject(new ApiError(xhr.status, problemDetail(xhr.responseText, xhr.status)));
+    };
+    xhr.onerror = () => reject(new ApiError(0, "Connexion au serveur impossible."));
+    xhr.send(buffer);
+  });
+}
+
+function problemDetail(text: string, status: number): string {
   try {
-    const body = (await response.json()) as { detail?: unknown; title?: unknown };
+    const body = JSON.parse(text) as { detail?: unknown; title?: unknown };
     if (typeof body.detail === "string" && body.detail) return body.detail;
     if (typeof body.title === "string" && body.title) return body.title;
   } catch {
     // Not a ProblemDetail (proxy error page, empty body): the status line is all we have.
   }
-  return `HTTP ${response.status}`;
+  return `HTTP ${status}`;
 }
 
 export function errorMessage(error: unknown): string {
