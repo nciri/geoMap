@@ -39,15 +39,13 @@ export async function api<T>(path: string, init: ApiInit = {}): Promise<T> {
 }
 
 // fetch cannot report upload progress; basemaps weigh hundreds of MB.
-export async function uploadWithProgress<T>(
+// fetch cannot report upload progress; basemaps weigh hundreds of MB, so the Blob
+// (a File, in practice) is handed to XHR as-is and streamed from disk by the browser.
+export function uploadWithProgress<T>(
   path: string,
   body: Blob,
   onProgress: (fraction: number) => void,
 ): Promise<T> {
-  // Sent as an ArrayBuffer, not the Blob itself: msw's XHR interceptor constructs a Fetch
-  // Request from the body, and jsdom's Blob is not interop-compatible with that path in tests.
-  // A real XHR handles both the same way, so this is transparent outside the test environment.
-  const buffer = await body.arrayBuffer();
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", path);
@@ -63,7 +61,7 @@ export async function uploadWithProgress<T>(
       else reject(new ApiError(xhr.status, problemDetail(xhr.responseText, xhr.status)));
     };
     xhr.onerror = () => reject(new ApiError(0, "Connexion au serveur impossible."));
-    xhr.send(buffer);
+    xhr.send(body);
   });
 }
 

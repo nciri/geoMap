@@ -120,3 +120,10 @@ it("turns an upload refusal into an ApiError carrying its detail", async () => {
     uploadWithProgress("/api/basemaps/zone-nord", new Blob([new Uint8Array(1)]), () => {}),
   ).rejects.toMatchObject({ status: 409, message: "basemap zone-nord already exists" });
 });
+
+it("turns an upload network failure into an ApiError", async () => {
+  server.use(http.put("/api/basemaps/zone-nord", () => HttpResponse.error()));
+  await expect(
+    uploadWithProgress("/api/basemaps/zone-nord", new Blob([new Uint8Array(1)]), () => {}),
+  ).rejects.toMatchObject({ status: 0, message: "Connexion au serveur impossible." });
+});
