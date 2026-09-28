@@ -58,7 +58,8 @@ td {
   flex: 1;
   min-height: 0;
 }
-.map {
+.map-frame .map {
+  /* Outranks maplibre-gl.css (.maplibregl-map is relative), which the lazy map chunk loads last. */
   position: absolute;
   inset: 0;
 }
