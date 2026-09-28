@@ -1,6 +1,6 @@
 import type * as maplibregl from "maplibre-gl";
 import type { ExpressionSpecification, LayerSpecification } from "maplibre-gl";
-import type { FeatureCollection, Geometry as GeoGeometry } from "geojson";
+import type { FeatureCollection, Geometry as GeoGeometry, Point } from "geojson";
 import type { Feature } from "../api/geomap";
 import { circlePolygon, type Position } from "./geodesy";
 import type { LngLatBounds2 } from "./MapView";
@@ -19,13 +19,17 @@ interface MissionFeatureProperties {
 
 const isVisible = (f: Feature) => f.suggestionStatus !== "REJECTED";
 
-function displayGeometry(f: Feature): GeoGeometry {
+export type Circle = Feature & { geometry: Point; style: { radiusMeters: number } };
+
+export function isCircle(f: Feature): f is Circle {
   const radius = f.style?.radiusMeters;
-  if (f.geometry.type === "Point" && radius) {
-    return circlePolygon(f.geometry.coordinates.slice(0, 2) as Position, radius);
-  }
-  return f.geometry;
+  return f.geometry.type === "Point" && typeof radius === "number" && radius > 0;
 }
+
+export const circleOf = (f: Circle) =>
+  circlePolygon(f.geometry.coordinates.slice(0, 2) as Position, f.style.radiusMeters);
+
+const displayGeometry = (f: Feature): GeoGeometry => (isCircle(f) ? circleOf(f) : f.geometry);
 
 export function toFeatureCollection(
   features: Feature[],

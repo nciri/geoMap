@@ -142,3 +142,33 @@ it("shows the server's reason when a change is refused", async () => {
     "a withdrawn mission cannot be edited",
   );
 });
+
+it("sets a circle's radius from the panel and keeps its centre", async () => {
+  let body: Partial<Feature> | undefined;
+  server.use(
+    http.put(`${path}/c1`, async ({ request }) => {
+      body = (await request.json()) as Partial<Feature>;
+      return HttpResponse.json(circle);
+    }),
+  );
+  panel("c1");
+  const user = userEvent.setup();
+  const radius = await screen.findByLabelText("Rayon (m)");
+  expect(radius).toHaveAttribute("min", "1");
+  expect(radius).toHaveAttribute("step", "1");
+  await user.clear(radius);
+  await user.type(radius, "1250");
+  await user.click(screen.getByRole("button", { name: "Enregistrer l'objet" }));
+  await waitFor(() =>
+    expect(body).toMatchObject({
+      geometry: circle.geometry,
+      style: { color: "#40a02b", radiusMeters: 1250 },
+    }),
+  );
+});
+
+it("offers no radius for objects that are not circles", async () => {
+  panel("s1");
+  await screen.findByLabelText("Nom de l'objet");
+  expect(screen.queryByLabelText("Rayon (m)")).not.toBeInTheDocument();
+});

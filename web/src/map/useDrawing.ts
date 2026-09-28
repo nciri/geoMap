@@ -24,8 +24,8 @@ const SELECT_FLAGS = {
   point: { feature: { draggable: true } },
   linestring: { feature: RESHAPE },
   polygon: { feature: RESHAPE },
-  // "center" scales x and y independently and would turn the circle into an ellipse.
-  circle: { feature: { draggable: true, coordinates: { resizable: "center-fixed" as const } } },
+  // Select mode resizes circles in Mercator space and deforms them; the radius is set in the panel.
+  circle: { feature: { draggable: true } },
 };
 
 interface Handlers {

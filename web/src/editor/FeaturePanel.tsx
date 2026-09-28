@@ -8,7 +8,7 @@ import {
   type Feature,
 } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { DEFAULT_COLOR } from "../map/missionLayer";
+import { DEFAULT_COLOR, isCircle } from "../map/missionLayer";
 
 interface Props {
   missionId: string;
@@ -19,7 +19,8 @@ interface Props {
 
 function typeLabel(f: Feature): string {
   if (f.kind === "APP6") return `APP-6D ${f.sidc ?? ""}`;
-  if (f.geometry.type === "Point") return f.style?.radiusMeters ? "Cercle" : "Point";
+  if (isCircle(f)) return "Cercle";
+  if (f.geometry.type === "Point") return "Point";
   return f.geometry.type === "LineString" ? "Ligne" : "Zone";
 }
 
@@ -87,7 +88,11 @@ export function FeaturePanel({ missionId, features, selectedId, onSelect }: Prop
                 description: changes.description,
                 style:
                   selected.kind === "GENERIC"
-                    ? { ...selected.style, color: changes.color }
+                    ? {
+                        ...selected.style,
+                        color: changes.color,
+                        ...(changes.radiusMeters ? { radiusMeters: changes.radiusMeters } : {}),
+                      }
                     : selected.style,
                 sidc: selected.sidc,
                 modifiers: selected.modifiers,
@@ -110,6 +115,7 @@ interface Changes {
   name: string;
   description: string;
   color: string;
+  radiusMeters?: number;
 }
 
 function FeatureDetails({
@@ -124,11 +130,21 @@ function FeatureDetails({
   const [name, setName] = useState(feature.name);
   const [description, setDescription] = useState(feature.description);
   const [color, setColor] = useState(feature.style?.color ?? DEFAULT_COLOR);
+  const circle = isCircle(feature);
+  // Drawn radii carry decimetres, which step=1 would reject and so block every save of the form.
+  const [radius, setRadius] = useState(
+    circle ? String(Math.round(feature.style.radiusMeters)) : "",
+  );
   const [confirming, setConfirming] = useState(false);
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    void onSave({ name: name.trim(), description, color });
+    void onSave({
+      name: name.trim(),
+      description,
+      color,
+      ...(circle ? { radiusMeters: Number(radius) } : {}),
+    });
   }
 
   return (
@@ -149,6 +165,19 @@ function FeatureDetails({
         <label>
           Couleur
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+        </label>
+      )}
+      {circle && (
+        <label>
+          Rayon (m)
+          <input
+            type="number"
+            required
+            min={1}
+            step={1}
+            value={radius}
+            onChange={(e) => setRadius(e.target.value)}
+          />
         </label>
       )}
       <button type="submit">Enregistrer l'objet</button>

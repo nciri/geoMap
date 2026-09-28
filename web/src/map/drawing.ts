@@ -1,6 +1,7 @@
 import type { GeoJSONStoreFeatures } from "terra-draw";
 import type { Feature, FeatureInput, Geometry } from "../api/geomap";
-import { circleFromRing, circlePolygon, type Position } from "./geodesy";
+import { circleFromRing, type Position } from "./geodesy";
+import { circleOf, isCircle } from "./missionLayer";
 
 export type DrawMode = "point" | "linestring" | "polygon" | "circle";
 
@@ -48,14 +49,15 @@ export function drawnToInput(
 
 export function toDrawFeature(feature: Feature): GeoJSONStoreFeatures | null {
   if (feature.kind !== "GENERIC") return null;
-  const radius = feature.style?.radiusMeters;
-  if (feature.geometry.type === "Point" && radius) {
-    const circle = circlePolygon(feature.geometry.coordinates.slice(0, 2) as Position, radius);
+  if (isCircle(feature)) {
     return {
       type: "Feature",
       id: feature.id,
-      geometry: { type: "Polygon", coordinates: round(circle.coordinates) as Position[][] },
-      properties: { mode: "circle", radiusKilometers: radius / 1000 },
+      geometry: {
+        type: "Polygon",
+        coordinates: round(circleOf(feature).coordinates) as Position[][],
+      },
+      properties: { mode: "circle", radiusKilometers: feature.style.radiusMeters / 1000 },
     };
   }
   return {

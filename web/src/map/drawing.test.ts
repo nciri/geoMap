@@ -92,3 +92,29 @@ it("reports a degenerate circle in French instead of throwing", () => {
   });
   expect(drawnToInput(drawn(circlePolygon(point, 500), "circle"))).toHaveProperty("input");
 });
+
+it("opens a saved zone as a Terra Draw polygon with coordinates it accepts", () => {
+  const zone = feature({
+    geometry: {
+      type: "Polygon",
+      coordinates: [
+        [
+          [2.123456789123, 48.1],
+          [2.2, 48.987654321987],
+          [2.3, 48.2],
+          [2.123456789123, 48.1],
+        ],
+      ],
+    },
+  });
+  const editable = toDrawFeature(zone);
+  expect(editable?.properties.mode).toBe("polygon");
+  expect(editable?.geometry.coordinates).toEqual([
+    [
+      [2.123456789, 48.1],
+      [2.2, 48.987654322],
+      [2.3, 48.2],
+      [2.123456789, 48.1],
+    ],
+  ]);
+});

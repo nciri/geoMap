@@ -1,7 +1,13 @@
 import type { Polygon } from "geojson";
 import { feature } from "../test/fixtures";
 import { distanceMeters, type Position } from "./geodesy";
-import { boundsOf, DEFAULT_COLOR, MISSION_LAYERS, toFeatureCollection } from "./missionLayer";
+import {
+  boundsOf,
+  DEFAULT_COLOR,
+  isCircle,
+  MISSION_LAYERS,
+  toFeatureCollection,
+} from "./missionLayer";
 import { MAP_FONTS } from "./style";
 
 it("draws generic objects with their colour and name", () => {
@@ -65,4 +71,23 @@ it("labels objects with a shipped font", () => {
     layout?: Record<string, unknown>;
   };
   expect(label.layout?.["text-font"]).toEqual([MAP_FONTS[0]]);
+});
+
+it("recognises a circle only as a point with a positive radius", () => {
+  expect(isCircle(feature({ style: { radiusMeters: 250 } }))).toBe(true);
+  expect(isCircle(feature({ style: { radiusMeters: 0 } }))).toBe(false);
+  expect(isCircle(feature({ style: { radiusMeters: -5 } }))).toBe(false);
+  expect(isCircle(feature({ style: { color: "#40a02b" } }))).toBe(false);
+  expect(isCircle(feature({ style: null }))).toBe(false);
+  const line = feature({
+    geometry: {
+      type: "LineString",
+      coordinates: [
+        [2, 48],
+        [3, 49],
+      ],
+    },
+    style: { radiusMeters: 250 },
+  });
+  expect(isCircle(line)).toBe(false);
 });
