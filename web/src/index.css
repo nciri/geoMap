@@ -1,0 +1,176 @@
+* {
+  box-sizing: border-box;
+}
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  font-family: system-ui, sans-serif;
+}
+[role="alert"] {
+  color: #d20f39;
+}
+.shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.topbar {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: #1e2030;
+  color: #ffffff;
+}
+.topbar a {
+  color: inherit;
+}
+.topbar .user {
+  margin-left: auto;
+}
+.page {
+  padding: 1rem;
+  overflow: auto;
+}
+.mission-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}
+.mission-form label {
+  display: flex;
+  flex-direction: column;
+}
+table {
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+th,
+td {
+  padding: 0.25rem 0.75rem;
+  text-align: left;
+}
+.map-frame {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.map-frame .map {
+  /* Outranks maplibre-gl.css (.maplibregl-map is relative), which the lazy map chunk loads last. */
+  position: absolute;
+  inset: 0;
+}
+.coordinates {
+  position: absolute;
+  right: 0.5rem;
+  bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+  padding: 0.25rem 0.5rem;
+  background: rgb(255 255 255 / 85%);
+  font-family: ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+.map-alert {
+  position: absolute;
+  top: 0.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.25rem 0.75rem;
+  background: #ffffff;
+}
+.editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.panel {
+  width: 22rem;
+  padding: 0.75rem;
+  overflow: auto;
+  border-right: 1px solid #ccd0da;
+}
+.features ul {
+  list-style: none;
+  padding: 0;
+}
+.features li.selected .feature-item {
+  font-weight: bold;
+}
+.feature-item {
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.badge {
+  color: #df8e1d;
+}
+.feature-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.feature-details label {
+  display: flex;
+  flex-direction: column;
+}
+.toolbar {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0.5rem 0;
+}
+.toolbar [aria-pressed="true"] {
+  font-weight: bold;
+}
+.symbol-picker button,
+.symbol-picker small {
+  display: block;
+  text-align: left;
+}
+.symbol-picker .selected {
+  font-weight: bold;
+}
+.symbol-fields label {
+  display: flex;
+  flex-direction: column;
+}
+.symbol-icon {
+  max-width: 64px;
+}
+.publication .errors {
+  color: #d20f39;
+}
+.publication .warnings {
+  color: #df8e1d;
+}
+.publication .actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+button.link {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+.topbar nav {
+  display: flex;
+  gap: 1rem;
+}
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 40rem;
+}
+.admin-form label {
+  display: flex;
+  flex-direction: column;
+}

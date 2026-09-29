@@ -1,0 +1,45 @@
+{
+  "realm": "geomap",
+  "enabled": true,
+  "roles": {
+    "realm": [{ "name": "planificateur" }, { "name": "administrateur" }]
+  },
+  "clients": [
+    {
+      "clientId": "geomap-web",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:5173/*"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "planificateur-e2e",
+      "enabled": true,
+      "email": "planificateur-e2e@geomap.test",
+      "emailVerified": true,
+      "firstName": "Paul",
+      "lastName": "Planificateur",
+      "credentials": [
+        { "type": "password", "value": "${E2E_PLANNER_PASSWORD}", "temporary": false }
+      ],
+      "realmRoles": ["planificateur"]
+    },
+    {
+      "username": "admin-e2e",
+      "enabled": true,
+      "email": "admin-e2e@geomap.test",
+      "emailVerified": true,
+      "firstName": "Anne",
+      "lastName": "Administratrice",
+      "credentials": [{ "type": "password", "value": "${E2E_ADMIN_PASSWORD}", "temporary": false }],
+      "realmRoles": ["administrateur"]
+    }
+  ]
+}

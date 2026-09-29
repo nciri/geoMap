@@ -1,0 +1,21 @@
+geomap:
+  signing:
+    private-key-pem: ${GEOMAP_SIGNING_PRIVATE_KEY_PEM:}
+    public-key-pem: ${GEOMAP_SIGNING_PUBLIC_KEY_PEM:}
+  storage:
+    endpoint: ${GEOMAP_STORAGE_ENDPOINT:}
+    access-key: ${GEOMAP_STORAGE_ACCESS_KEY:}
+    secret-key: ${GEOMAP_STORAGE_SECRET_KEY:}
+    bucket: ${GEOMAP_STORAGE_BUCKET:geomap}
+spring:
+  application:
+    name: geomap-server
+  mvc:
+    problemdetails:
+      # Framework-raised errors (malformed JSON, bad path ids) also answer with RFC 9457 bodies.
+      enabled: true
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus

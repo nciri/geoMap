@@ -120,7 +120,7 @@ Rôles Keycloak : `planificateur` (missions) et `administrateur` (terminaux, fon
 Conteneur binaire :
 
 ```
-magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chiffrée | signature
+"GMP1" | longueur manifeste (int32) | manifeste (JSON UTF-8) | longueur charge (int32) | charge chiffrée | longueur signature (uint16) | signature
 ```
 
 **Manifeste (en clair, signé)** :
@@ -135,7 +135,7 @@ magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chi
   "basemap": { "id": "zone-nord", "sha256": "…" },
   "payload": { "alg": "A256GCM", "iv": "…", "sha256": "…" },
   "recipients": [
-    { "deviceCertSha256": "…", "alg": "RSA-OAEP-256", "wrappedKey": "…" }
+    { "deviceCertSha256": "…", "alg": "RSA-OAEP-SHA256-MGF1SHA1", "wrappedKey": "…" }
   ]
 }
 ```
@@ -146,9 +146,9 @@ magic "GMP1" | longueur manifeste (uint32) | manifeste (JSON UTF-8) | charge chi
 - `icons/<hash>.png` : images des symboles APP-6D ponctuels ;
 - `summary.md` : synthèse de mission (saisie à la main en V1, générée par l'IA au sous-projet 2).
 
-**Signature** : ECDSA P-256 du serveur, sur `manifeste || charge chiffrée`.
+**Signature** : ECDSA P-256 du serveur, sur tous les octets qui précèdent la longueur de signature (en-tête, manifeste, charge chiffrée). Signer l'en-tête empêche de déplacer la frontière entre manifeste et charge.
 
-**Choix de RSA-OAEP pour l'emballage de clé :** l'accord de clé ECDH dans l'Android Keystore n'est disponible qu'à partir de l'API 31. Avec Android 10 minimum, le terminal utilise une paire RSA-3072 dédiée au déchiffrement (OAEP SHA-256), distincte de la paire servant au certificat mTLS.
+**Choix de RSA-OAEP pour l'emballage de clé :** l'accord de clé ECDH dans l'Android Keystore n'est disponible qu'à partir de l'API 31. Avec Android 10 minimum, le terminal utilise une paire RSA-3072 dédiée au déchiffrement (OAEP, empreinte SHA-256, MGF1-SHA1 : seul MGF1 accepté par l'Android Keystore avant l'API 34), distincte de la paire servant au certificat mTLS.
 
 ### 6.3 Règles de vérification sur le terminal
 
@@ -257,7 +257,7 @@ Métriques Prometheus (Spring Boot Actuator + Micrometer) : publications, durée
 |---|---|
 | Appareil Android de référence | À définir pour mesurer les budgets. |
 | Lecture PMTiles hors ligne par MapLibre Native Android | À vérifier au premier prototype ; repli sur MBTiles sans impact sur le reste. |
-| Licences de mil-sym-java et de ses dépendances | À vérifier avant intégration (les SVG ESRI sont en Apache-2.0). |
+| Licences de mil-sym-java et de ses dépendances | mil-sym-java 2.9.6 : Apache-2.0 (fichier `LICENSE`, `pom.xml`, API GitHub), mais le `MANIFEST.MF` du jar indique encore « GPL v3.0 » — incohérence à faire confirmer par le juridique. Dépendances : geodesy 1.1.3, jsvg 2.0.0 ; SVG ESRI en Apache-2.0. |
 | Stockage de la clé de signature du serveur | Secret Kubernetes en V1 ; HSM ou service de la PKI ALIAS à étudier. |
 | Interface de la PKI ALIAS (API de signature de CSR, publication de la CRL) | À obtenir auprès de l'équipe ALIAS. |
 | Disponibilité de PostGIS sur ALIAS | Non requis en V1 ; utile pour les fonctions spatiales futures. |

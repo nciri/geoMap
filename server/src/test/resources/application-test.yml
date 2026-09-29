@@ -1,0 +1,8 @@
+# Tests authenticate with spring-security-test's jwt() post-processor, which bypasses the decoder;
+# this URI only satisfies the resource server auto-configuration and is never called.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:9/unused-jwks
