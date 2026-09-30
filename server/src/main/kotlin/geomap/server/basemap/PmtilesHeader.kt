@@ -14,6 +14,8 @@ data class PmtilesHeader(
     val metadataOffset: Long,
     val metadataLength: Long,
     val internalCompression: Int,
+    // Where the last section (root/leaf directories, metadata, tile data) ends: a shorter file is truncated.
+    val end: Long,
 ) {
     companion object {
         const val SIZE = 127
@@ -30,12 +32,19 @@ data class PmtilesHeader(
             val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
 
             fun degrees(at: Int) = buffer.getInt(at) / 1e7
+
+            // A negative offset or length, or one that overflows, reads as a section ending beyond any file.
+            fun sectionEnd(at: Int): Long {
+                val (offset, length) = buffer.getLong(at) to buffer.getLong(at + 8)
+                return if (offset < 0 || length < 0 || offset + length < 0) Long.MAX_VALUE else offset + length
+            }
             return PmtilesHeader(
                 kind = kind,
                 bounds = BBox(degrees(102), degrees(106), degrees(110), degrees(114)),
                 metadataOffset = buffer.getLong(24),
                 metadataLength = buffer.getLong(32),
                 internalCompression = bytes[97].toInt(),
+                end = listOf(8, 24, 40, 56).maxOf(::sectionEnd),
             )
         }
 

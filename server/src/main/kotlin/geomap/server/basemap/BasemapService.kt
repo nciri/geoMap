@@ -61,7 +61,9 @@ class BasemapService(
         val buffered = BufferedInputStream(content)
         buffered.mark(PmtilesHeader.SIZE)
         val header =
-            PmtilesHeader.parse(buffered.readNBytes(PmtilesHeader.SIZE))
+            PmtilesHeader
+                .parse(buffered.readNBytes(PmtilesHeader.SIZE))
+                ?.takeIf { it.end <= size }
                 ?: throw InvalidInputException("the file is not a valid PMTiles archive")
         buffered.reset()
 
@@ -69,7 +71,13 @@ class BasemapService(
         val digest = MessageDigest.getInstance("SHA-256")
         store.put(objectKey, DigestInputStream(buffered, digest), size, "application/vnd.pmtiles")
         val sha256 = digest.digest()
-        val attribution = describe(objectKey)?.second ?: ""
+        val attribution =
+            try {
+                describe(objectKey)?.second ?: ""
+            } catch (e: Exception) {
+                store.remove(objectKey)
+                throw e
+            }
         // Same scheme as shared BasemapSignature: ECDSA over the file's SHA-256 digest.
         val now = clock.instant()
         val basemap =

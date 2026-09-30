@@ -4,6 +4,9 @@ import geomap.server.IntegrationTest
 import geomap.server.TestPmtiles
 import geomap.server.mission.BBox
 import geomap.server.storage.ObjectStore
+import geomap.server.storage.StorageProperties
+import io.minio.ListObjectsArgs
+import io.minio.MinioClient
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.DefaultApplicationArguments
@@ -24,6 +27,24 @@ class BasemapKindTest : IntegrationTest() {
 
     @Autowired
     private lateinit var backfill: BasemapBackfill
+
+    @Autowired
+    private lateinit var storage: StorageProperties
+
+    private fun storedObjects(id: String) =
+        MinioClient
+            .builder()
+            .endpoint(storage.endpoint)
+            .credentials(storage.accessKey, storage.secretKey)
+            .build()
+            .listObjects(
+                ListObjectsArgs
+                    .builder()
+                    .bucket(storage.bucket)
+                    .prefix("basemaps/$id/")
+                    .recursive(true)
+                    .build(),
+            ).count()
 
     private fun upload(
         id: String,
@@ -60,6 +81,16 @@ class BasemapKindTest : IntegrationTest() {
             jsonPath("$.detail") { value("the file is not a valid PMTiles archive") }
         }
         assertNull(basemaps.find("junk"))
+    }
+
+    @Test
+    fun `a truncated archive is refused and nothing is stored`() {
+        upload("cut", TestPmtiles.build(size = 10_000).copyOf(6_000)).andExpect {
+            status { isBadRequest() }
+            jsonPath("$.detail") { value("the file is not a valid PMTiles archive") }
+        }
+        assertNull(basemaps.find("cut"))
+        assertEquals(0, storedObjects("cut"))
     }
 
     @Test

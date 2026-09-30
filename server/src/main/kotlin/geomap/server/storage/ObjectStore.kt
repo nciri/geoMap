@@ -5,6 +5,7 @@ import io.minio.GetObjectArgs
 import io.minio.MakeBucketArgs
 import io.minio.MinioClient
 import io.minio.PutObjectArgs
+import io.minio.RemoveObjectArgs
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.stereotype.Component
 import java.io.InputStream
@@ -75,6 +76,16 @@ class ObjectStore(
                 .length(length)
                 .build(),
         )
+
+    fun remove(key: String) {
+        client.removeObject(
+            RemoveObjectArgs
+                .builder()
+                .bucket(props.bucket)
+                .`object`(key)
+                .build(),
+        )
+    }
 
     // ALIAS may pre-provision the bucket; create it lazily so startup does not depend on MinIO being up.
     private fun ensureBucket() {

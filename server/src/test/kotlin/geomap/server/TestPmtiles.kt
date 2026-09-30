@@ -7,7 +7,7 @@ import java.nio.ByteOrder
 import java.util.zip.GZIPOutputStream
 import kotlin.random.Random
 
-// Header + metadata of a real PMTiles v3 archive; the server never reads the tiles themselves.
+// Header, metadata and tile-data section of a PMTiles v3 archive; the tiles are random bytes the server never decodes.
 object TestPmtiles {
     fun build(
         tileType: Int = 1,
@@ -23,11 +23,12 @@ object TestPmtiles {
         header.put("PMTiles".toByteArray(Charsets.US_ASCII)).put(3)
         header.putLong(8, 127L + metadata.size).putLong(16, 0)
         header.putLong(24, 127).putLong(32, metadata.size.toLong())
+        val tileDataOffset = 127L + metadata.size
+        header.putLong(56, tileDataOffset).putLong(64, maxOf(0, size - tileDataOffset))
         header.put(97, if (gzipMetadata) 2 else 1).put(98, 1).put(99, tileType.toByte())
         header.putInt(102, (bounds.minLon * 1e7).toInt()).putInt(106, (bounds.minLat * 1e7).toInt())
         header.putInt(110, (bounds.maxLon * 1e7).toInt()).putInt(114, (bounds.maxLat * 1e7).toInt())
-        val body = header.array() + metadata
-        return body + Random(seed).nextBytes(maxOf(0, size - body.size))
+        return header.array() + metadata + Random(seed).nextBytes(maxOf(0, size - tileDataOffset.toInt()))
     }
 
     private fun quote(text: String) = "\"" + text.replace("\\", "\\\\").replace("\"", "\\\"") + "\""

@@ -4,6 +4,8 @@ import geomap.server.TestPmtiles
 import geomap.server.mission.BBox
 import org.junit.jupiter.api.Test
 import tools.jackson.databind.json.JsonMapper
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -39,6 +41,14 @@ class PmtilesHeaderTest {
         assertNull(PmtilesHeader.parse(TestPmtiles.build().copyOf(100)))
         assertNull(PmtilesHeader.parse(TestPmtiles.build(tileType = 0).copyOf(127)))
         assertNull(PmtilesHeader.parse(TestPmtiles.build().copyOf(127).also { it[7] = 2 }))
+    }
+
+    @Test
+    fun `a section past the end of the long range never fits in a file`() {
+        val bytes = TestPmtiles.build(size = 1000)
+        assertEquals(1000L, header(bytes).end)
+        ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).putLong(56, Long.MAX_VALUE)
+        assertEquals(Long.MAX_VALUE, header(bytes).end)
     }
 
     @Test
