@@ -12,8 +12,11 @@ import geomap.server.web.ConflictException
 import geomap.server.web.ForbiddenException
 import geomap.server.web.InvalidInputException
 import geomap.server.web.NotFoundException
+import org.slf4j.LoggerFactory
 import org.springframework.dao.DuplicateKeyException
 import org.springframework.stereotype.Service
+import tools.jackson.databind.ObjectMapper
+import java.io.BufferedInputStream
 import java.io.InputStream
 import java.security.DigestInputStream
 import java.security.MessageDigest
@@ -27,6 +30,7 @@ class BasemapService(
     private val signingKey: ServerSigningKey,
     private val audit: AuditRepository,
     private val clock: Clock,
+    private val json: ObjectMapper,
 ) {
     fun list(): List<Basemap> = basemaps.findAll()
 
@@ -53,13 +57,35 @@ class BasemapService(
         if (basemaps.find(id) != null) throw ConflictException("basemap $id already exists")
 
         // Each upload gets its own key: a lost race leaves one orphaned object, never a mismatched row.
+        // Only the header is peeked; the rest still streams straight to MinIO.
+        val buffered = BufferedInputStream(content)
+        buffered.mark(PmtilesHeader.SIZE)
+        val header =
+            PmtilesHeader.parse(buffered.readNBytes(PmtilesHeader.SIZE))
+                ?: throw InvalidInputException("the file is not a valid PMTiles archive")
+        buffered.reset()
+
         val objectKey = "basemaps/$id/${UUID.randomUUID()}.pmtiles"
         val digest = MessageDigest.getInstance("SHA-256")
-        store.put(objectKey, DigestInputStream(content, digest), size, "application/vnd.pmtiles")
+        store.put(objectKey, DigestInputStream(buffered, digest), size, "application/vnd.pmtiles")
         val sha256 = digest.digest()
+        val attribution = describe(objectKey)?.second ?: ""
         // Same scheme as shared BasemapSignature: ECDSA over the file's SHA-256 digest.
         val now = clock.instant()
-        val basemap = Basemap(id, trimmed, size, objectKey, sha256.toHex(), b64(Ecdsa.sign(sha256, signingKey.privateKey)), actor.user, now)
+        val basemap =
+            Basemap(
+                id,
+                trimmed,
+                size,
+                objectKey,
+                sha256.toHex(),
+                b64(Ecdsa.sign(sha256, signingKey.privateKey)),
+                actor.user,
+                now,
+                header.kind,
+                attribution,
+                header.bounds,
+            )
         try {
             basemaps.insert(basemap)
         } catch (e: DuplicateKeyException) {
@@ -69,7 +95,42 @@ class BasemapService(
         return basemap
     }
 
+    fun backfill() {
+        for (basemap in basemaps.findWithoutBounds()) {
+            val description =
+                try {
+                    describe(basemap.objectKey)
+                } catch (e: Exception) {
+                    null
+                }
+            if (description == null) {
+                log.warn("basemap {}: header unreadable, kept as VECTOR", basemap.id)
+                continue
+            }
+            val (header, attribution) = description
+            basemaps.updateDescription(basemap.id, header.kind, attribution, header.bounds)
+        }
+    }
+
+    private fun describe(objectKey: String): Pair<PmtilesHeader, String>? {
+        val header =
+            store.getRange(objectKey, 0, PmtilesHeader.SIZE.toLong()).use { PmtilesHeader.parse(it.readNBytes(PmtilesHeader.SIZE)) }
+                ?: return null
+        // Metadata larger than this cannot be an attribution worth reading.
+        val attribution =
+            if (header.metadataLength in 1..MAX_METADATA) {
+                store.getRange(objectKey, header.metadataOffset, header.metadataLength).use {
+                    PmtilesHeader.attribution(it.readAllBytes(), header.internalCompression, json)
+                }
+            } else {
+                ""
+            }
+        return header to attribution
+    }
+
     companion object {
         private val ID = Regex("^[a-z0-9-]{1,64}$")
+        private const val MAX_METADATA = 1_048_576L
+        private val log = LoggerFactory.getLogger(BasemapService::class.java)
     }
 }
