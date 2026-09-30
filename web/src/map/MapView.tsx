@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import { FetchSource, PMTiles, Protocol } from "pmtiles";
 import { tileHeaders } from "../auth/session";
 import { errorMessage } from "../api/client";
-import { absoluteTilesUrl, basemapStyle } from "./style";
+import type { LayerSpecification } from "maplibre-gl";
+import { absoluteTilesUrl, basemapStyle, isOverlay, type StackLayer } from "./style";
+import { visibility, type MapMode } from "./mapModes";
 import { CoordinateReadout } from "./CoordinateReadout";
 
 export type LngLatBounds2 = [[number, number], [number, number]];
@@ -18,46 +20,69 @@ const protocol = new Protocol({ metadata: true });
 maplibregl.addProtocol("pmtiles", protocol.tile);
 
 interface Props {
-  basemapId: string | null;
+  vector: StackLayer | null;
+  imagery: StackLayer[];
+  mode: MapMode;
   initialBounds?: LngLatBounds2 | null;
   onReady?: (map: maplibregl.Map) => void;
+  children?: ReactNode;
 }
 
-export function MapView({ basemapId, initialBounds, onReady }: Props) {
+export function MapView({ vector, imagery, mode, initialBounds, onReady, children }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const onReadyRef = useRef(onReady);
   const initialBoundsRef = useRef(initialBounds);
+  const stackRef = useRef({ vector, imagery });
+  const styleLayers = useRef<LayerSpecification[]>([]);
+  const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [cursor, setCursor] = useState<{ lng: number; lat: number } | null>(null);
   const [basemapError, setBasemapError] = useState<string | null>(null);
+  const [imageryErrors, setImageryErrors] = useState<{ id: string; name: string; cause: string }[]>(
+    [],
+  );
+  const stackKey = [vector?.id ?? "", ...imagery.map((i) => i.id)].join("|");
 
   useEffect(() => {
     onReadyRef.current = onReady;
     initialBoundsRef.current = initialBounds;
+    stackRef.current = { vector, imagery };
   });
 
   useEffect(() => {
     let disposed = false;
-    let tiles: PMTiles | null = null;
-    const map = new maplibregl.Map({
+    const { vector, imagery } = stackRef.current;
+    const style = basemapStyle({ vector, imagery });
+    styleLayers.current = style.layers;
+    const created = new maplibregl.Map({
       container: container.current!,
-      style: basemapStyle(basemapId),
+      style,
       center: [2.35, 46.6],
       zoom: 5,
     });
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
-    map.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
-    map.on("mousemove", (e) => setCursor({ lng: e.lngLat.lng, lat: e.lngLat.lat }));
-    map.on("load", () => onReadyRef.current?.(map));
+    created.addControl(new maplibregl.NavigationControl(), "top-right");
+    created.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
+    created.on("mousemove", (e) => setCursor({ lng: e.lngLat.lng, lat: e.lngLat.lat }));
+    created.on("load", () => {
+      if (disposed) return;
+      onReadyRef.current?.(created);
+      setMap(created);
+    });
     const bounds = initialBoundsRef.current;
-    if (bounds) map.fitBounds(bounds, { padding: 60, maxZoom: 15, animate: false });
-    if (basemapId) {
-      // The shared Headers object carries the current token; pmtiles reads it on every request.
-      tiles = new PMTiles(new FetchSource(absoluteTilesUrl(basemapId), tileHeaders));
-      protocol.add(tiles);
-      tiles.getHeader().then(
+    if (bounds) created.fitBounds(bounds, { padding: 60, maxZoom: 15, animate: false });
+    // The shared Headers object carries the current token; pmtiles reads it on every request.
+    const open = (layer: StackLayer) => {
+      const archive = new PMTiles(new FetchSource(absoluteTilesUrl(layer.id), tileHeaders));
+      protocol.add(archive);
+      return archive;
+    };
+    const archives: PMTiles[] = [];
+    if (vector) {
+      const archive = open(vector);
+      archives.push(archive);
+      archive.getHeader().then(
         (header) => {
           if (disposed || bounds) return;
-          map.fitBounds(
+          created.fitBounds(
             [
               [header.minLon, header.minLat],
               [header.maxLon, header.maxLat],
@@ -71,23 +96,53 @@ export function MapView({ basemapId, initialBounds, onReady }: Props) {
         },
       );
     }
+    for (const layer of imagery) {
+      const archive = open(layer);
+      archives.push(archive);
+      archive.getHeader().catch((e: unknown) => {
+        if (disposed) return;
+        setImageryErrors((errors) => [
+          ...errors,
+          { id: layer.id, name: layer.name, cause: errorMessage(e) },
+        ]);
+      });
+    }
     return () => {
       disposed = true;
-      map.remove();
+      setMap(null);
+      created.remove();
       // pmtiles 4.5 has no removal method; its registry is a public Map keyed by source.
-      const key = tiles?.source.getKey();
-      if (key && protocol.tiles.get(key) === tiles) protocol.tiles.delete(key);
+      for (const archive of archives) {
+        const key = archive.source.getKey();
+        if (protocol.tiles.get(key) === archive) protocol.tiles.delete(key);
+      }
     };
-  }, [basemapId]);
+  }, [stackKey]);
+
+  useEffect(() => {
+    if (!map) return;
+    // Only the style's own layers: the mission and APP-6D layers stay visible in every view.
+    for (const layer of styleLayers.current) {
+      map.setLayoutProperty(layer.id, "visibility", visibility(layer.id, isOverlay(layer), mode));
+    }
+  }, [map, mode]);
 
   return (
     <div className="map-frame">
       <div ref={container} className="map" />
-      {basemapError && (
-        <p role="alert" className="map-alert" title={basemapError}>
-          Fond de carte illisible : le serveur ne l'a pas fourni.
-        </p>
-      )}
+      <div className="map-alerts">
+        {basemapError && (
+          <p role="alert" title={basemapError}>
+            Fond de carte illisible : le serveur ne l'a pas fourni.
+          </p>
+        )}
+        {imageryErrors.map((error) => (
+          <p key={error.id} role="alert" title={error.cause}>
+            Imagerie illisible : {error.name}
+          </p>
+        ))}
+      </div>
+      {children}
       <CoordinateReadout position={cursor} />
     </div>
   );

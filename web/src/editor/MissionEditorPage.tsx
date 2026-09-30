@@ -16,6 +16,9 @@ import { errorMessage } from "../api/client";
 import { STATUS_LABELS } from "../format";
 import { MissionForm } from "../missions/MissionForm";
 import { MapView } from "../map/MapView";
+import { ModeSwitch } from "../map/ModeSwitch";
+import { effectiveMode, loadMode, saveMode } from "../map/mapModes";
+import type { StackLayer } from "../map/style";
 import {
   addMissionLayers,
   boundsOf,
@@ -51,6 +54,7 @@ export function MissionEditorPage() {
   const [drawError, setDrawError] = useState<string | null>(null);
   const [placing, setPlacing] = useState<PlacedSymbol | null>(null);
   const placingRef = useRef(placing);
+  const [mode, setMode] = useState(loadMode);
   const refreshFeatures = () =>
     queryClient.invalidateQueries({ queryKey: ["features", missionId] });
 
@@ -137,18 +141,26 @@ export function MissionEditorPage() {
   }
   if (!mission.data || !features.data || !basemaps.data) return <p>Chargement…</p>;
   const current = mission.data;
-  const firstLayer = current.layers[0];
-  const vectorId =
-    firstLayer && basemaps.data?.find((b) => b.id === firstLayer)?.kind === "VECTOR"
-      ? firstLayer
-      : null;
+  const basemapOf = (layerId: string) => basemaps.data.find((b) => b.id === layerId);
+  const toLayer = ({ id, name, attribution }: StackLayer): StackLayer => ({
+    id,
+    name,
+    attribution,
+  });
+  const first = basemapOf(current.layers[0] ?? "");
+  const vector = first?.kind === "VECTOR" ? toLayer(first) : null;
+  const imagery = current.layers.flatMap((layerId) => {
+    const layer = basemapOf(layerId);
+    return layer?.kind === "RASTER" ? [toLayer(layer)] : [];
+  });
+  const shown = effectiveMode(mode, imagery.length > 0);
 
   return (
     <div className="editor">
       <aside className="panel">
         <h1>{current.name}</h1>
         <p>{STATUS_LABELS[current.status]}</p>
-        {!vectorId && (
+        {!vector && (
           <p role="status">Aucun fond de carte : choisissez-en un dans les paramètres.</p>
         )}
         <details>
@@ -205,15 +217,26 @@ export function MissionEditorPage() {
         />
       </aside>
       <MapView
-        key={vectorId ?? "none"}
-        basemapId={vectorId}
+        key={current.layers.join("|") || "none"}
+        vector={vector}
+        imagery={imagery}
+        mode={shown}
         initialBounds={boundsOf(features.data)}
         onReady={(ready) => {
           addMissionLayers(ready);
           addSymbolLayers(ready);
           setMap(ready);
         }}
-      />
+      >
+        <ModeSwitch
+          mode={shown}
+          hasImagery={imagery.length > 0}
+          onMode={(next) => {
+            saveMode(next);
+            setMode(next);
+          }}
+        />
+      </MapView>
     </div>
   );
 }
