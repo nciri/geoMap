@@ -1,20 +1,27 @@
 import { act, screen, waitFor } from "@testing-library/react";
+import { useEffect } from "react";
 import type { GeoJSONStoreFeatures } from "terra-draw";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { server } from "../test/server";
 import { renderWithProviders } from "../test/render";
 import { basemap, feature, mission } from "../test/fixtures";
 import { MissionEditorPage } from "./MissionEditorPage";
 
+const mapMounts = vi.hoisted(() => ({ count: 0 }));
 vi.mock("../map/MapView", () => ({
-  MapView: (props: { basemapId: string | null; initialBounds?: unknown }) => (
-    <div
-      data-testid="map"
-      data-basemap={props.basemapId ?? ""}
-      data-bounds={JSON.stringify(props.initialBounds ?? null)}
-    />
-  ),
+  MapView: (props: { basemapId: string | null; initialBounds?: unknown }) => {
+    useEffect(() => {
+      mapMounts.count += 1;
+    }, []);
+    return (
+      <div
+        data-testid="map"
+        data-basemap={props.basemapId ?? ""}
+        data-bounds={JSON.stringify(props.initialBounds ?? null)}
+      />
+    );
+  },
 }));
 
 // The map never loads in jsdom, so Terra Draw's finish events are fed to the page's handlers directly.
@@ -93,6 +100,24 @@ it("still opens a mission without a basemap and says what to do", async () => {
   renderWithProviders(<MissionEditorPage />, route);
   expect(await screen.findByRole("status")).toHaveTextContent("Aucun fond de carte");
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "");
+});
+
+it("waits for basemaps to load before opening the map, mounting it once with the vector id", async () => {
+  mapMounts.count = 0;
+  serve();
+  server.use(
+    http.get("/api/basemaps", async () => {
+      await delay(50);
+      return HttpResponse.json([basemap()]);
+    }),
+  );
+  renderWithProviders(<MissionEditorPage />, route);
+  // While basemaps are still loading, the page must not show the wrong "no basemap" status.
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Op Nord" })).toBeInTheDocument();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "zone-nord");
+  expect(mapMounts.count).toBe(1);
 });
 
 it("saves mission settings", async () => {

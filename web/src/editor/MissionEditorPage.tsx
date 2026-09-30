@@ -132,10 +132,10 @@ export function MissionEditorPage() {
       ?.setData(toFeatureCollection(features.data, editingId));
   }, [map, features.data, editingId]);
 
-  if (mission.error || features.error) {
-    return <p role="alert">{errorMessage(mission.error ?? features.error)}</p>;
+  if (mission.error || features.error || basemaps.error) {
+    return <p role="alert">{errorMessage(mission.error ?? features.error ?? basemaps.error)}</p>;
   }
-  if (!mission.data || !features.data) return <p>Chargement…</p>;
+  if (!mission.data || !features.data || !basemaps.data) return <p>Chargement…</p>;
   const current = mission.data;
   const firstLayer = current.layers[0];
   const vectorId =
