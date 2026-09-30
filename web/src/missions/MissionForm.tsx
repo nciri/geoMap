@@ -13,14 +13,19 @@ interface Props {
 export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
   const basemaps = useQuery({ queryKey: ["basemaps"], queryFn: listBasemaps });
   const [name, setName] = useState(initial?.name ?? "");
-  const [vector, setVector] = useState(initial?.layers[0] ?? "");
-  const [imagery, setImagery] = useState<string[]>(initial?.layers.slice(1) ?? []);
+  const [layers, setLayers] = useState<string[]>(initial?.layers ?? []);
   const [validUntil, setValidUntil] = useState(toUtcInput(initial?.validUntil ?? null));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const vectors = basemaps.data?.filter((b) => b.kind === "VECTOR") ?? [];
   const rasters = basemaps.data?.filter((b) => b.kind === "RASTER") ?? [];
+  // Split by kind, not position: an imagery-only mission has no vector layer first.
+  const vector = layers.find((id) => vectors.some((b) => b.id === id)) ?? "";
+  const imagery = layers.filter((id) => id !== vector);
+  const setVector = (id: string) => setLayers([...(id ? [id] : []), ...imagery]);
+  const setImagery = (update: (current: string[]) => string[]) =>
+    setLayers([...(vector ? [vector] : []), ...update(imagery)]);
   const nameOf = (id: string) => basemaps.data?.find((b) => b.id === id)?.name ?? id;
   const attributionOf = (id: string) => basemaps.data?.find((b) => b.id === id)?.attribution ?? "";
 
@@ -49,8 +54,7 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
       });
       if (!initial) {
         setName("");
-        setVector("");
-        setImagery([]);
+        setLayers([]);
         setValidUntil("");
       }
     } catch (e) {

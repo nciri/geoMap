@@ -73,3 +73,25 @@ it("removes an imagery layer", async () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ layers: ["zone-nord"] })),
   );
 });
+
+it("keeps the imagery of an imagery-only mission when a vector basemap is chosen", async () => {
+  serve();
+  const onSubmit = vi.fn(async () => {});
+  renderWithProviders(
+    <MissionForm
+      initial={mission({ layers: ["paris-ortho"] })}
+      submitLabel="Enregistrer"
+      onSubmit={onSubmit}
+    />,
+  );
+  const user = userEvent.setup();
+  await screen.findByRole("button", { name: "Retirer Paris ortho" });
+  expect(screen.getByLabelText("Ajouter une imagerie")).not.toHaveTextContent("Paris ortho");
+  await user.selectOptions(screen.getByLabelText("Fond de carte"), "zone-nord");
+  await user.click(screen.getByRole("button", { name: "Enregistrer" }));
+  await waitFor(() =>
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ layers: ["zone-nord", "paris-ortho"] }),
+    ),
+  );
+});
