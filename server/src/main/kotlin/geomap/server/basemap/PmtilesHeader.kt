@@ -1,6 +1,7 @@
 package geomap.server.basemap
 
 import geomap.server.mission.BBox
+import geomap.server.web.InvalidInputException
 import tools.jackson.databind.ObjectMapper
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -19,6 +20,8 @@ data class PmtilesHeader(
 ) {
     companion object {
         const val SIZE = 127
+        const val MAX_METADATA = 1_048_576
+        const val INVALID = "the file is not a valid PMTiles archive"
         private val MAGIC = "PMTiles".toByteArray(Charsets.US_ASCII)
 
         fun parse(bytes: ByteArray): PmtilesHeader? {
@@ -53,18 +56,26 @@ data class PmtilesHeader(
             metadata: ByteArray,
             internalCompression: Int,
             json: ObjectMapper,
-        ): String =
-            try {
-                val raw =
-                    when (internalCompression) {
-                        1 -> metadata
-                        2 -> GZIPInputStream(metadata.inputStream()).use { it.readBytes() }
-                        else -> return ""
-                    }
+        ): String {
+            val raw =
+                when (internalCompression) {
+                    1 -> metadata
+                    2 ->
+                        try {
+                            GZIPInputStream(metadata.inputStream()).use { it.readNBytes(MAX_METADATA + 1) }
+                        } catch (e: Exception) {
+                            return ""
+                        }
+                    else -> return ""
+                }
+            // A few kilobytes of gzip can inflate to gigabytes; the backfill reads these at every boot.
+            if (raw.size > MAX_METADATA) throw InvalidInputException(INVALID)
+            return try {
                 val value = json.readTree(raw).get("attribution")?.asString() ?: ""
                 value.replace(Regex("<[^>]*>"), "").trim()
             } catch (e: Exception) {
                 ""
             }
+        }
     }
 }

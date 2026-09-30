@@ -64,7 +64,7 @@ class BasemapService(
             PmtilesHeader
                 .parse(buffered.readNBytes(PmtilesHeader.SIZE))
                 ?.takeIf { it.end <= size }
-                ?: throw InvalidInputException("the file is not a valid PMTiles archive")
+                ?: throw InvalidInputException(PmtilesHeader.INVALID)
         buffered.reset()
 
         val objectKey = "basemaps/$id/${UUID.randomUUID()}.pmtiles"
@@ -112,7 +112,7 @@ class BasemapService(
                     null
                 }
             if (description == null) {
-                log.warn("basemap {}: header unreadable, kept as VECTOR", basemap.id)
+                log.warn("basemap {}: header or metadata unreadable, kept as VECTOR", basemap.id)
                 continue
             }
             val (header, attribution) = description
@@ -126,7 +126,7 @@ class BasemapService(
                 ?: return null
         // Metadata larger than this cannot be an attribution worth reading.
         val attribution =
-            if (header.metadataLength in 1..MAX_METADATA) {
+            if (header.metadataLength in 1..PmtilesHeader.MAX_METADATA) {
                 store.getRange(objectKey, header.metadataOffset, header.metadataLength).use {
                     PmtilesHeader.attribution(it.readAllBytes(), header.internalCompression, json)
                 }
@@ -138,7 +138,6 @@ class BasemapService(
 
     companion object {
         private val ID = Regex("^[a-z0-9-]{1,64}$")
-        private const val MAX_METADATA = 1_048_576L
         private val log = LoggerFactory.getLogger(BasemapService::class.java)
     }
 }

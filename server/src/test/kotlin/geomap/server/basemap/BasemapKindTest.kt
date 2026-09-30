@@ -83,6 +83,47 @@ class BasemapKindTest : IntegrationTest() {
         assertNull(basemaps.find("junk"))
     }
 
+    private fun legacy(
+        id: String,
+        bytes: ByteArray,
+    ) {
+        store.put("basemaps/$id/1.pmtiles", bytes.inputStream(), bytes.size.toLong(), "application/vnd.pmtiles")
+        jdbc
+            .sql(
+                """
+                INSERT INTO basemap (id, name, size_bytes, object_key, sha256, signature, created_by, created_at)
+                VALUES (:id, 'Old', :size, :key, :sha, 'sig', 'root', :at)
+                """.trimIndent(),
+            ).param("id", id)
+            .param("size", bytes.size)
+            .param("key", "basemaps/$id/1.pmtiles")
+            .param("sha", "d".repeat(64))
+            .param("at", Timestamp.from(Instant.now()))
+            .update()
+    }
+
+    // Compresses to a few kilobytes, inflates past the 1 MiB metadata cap.
+    private val metadataBomb = TestPmtiles.build(tileType = 3, attribution = "x".repeat(2_000_000))
+
+    @Test
+    fun `an archive whose metadata inflates past the cap is refused and nothing is stored`() {
+        upload("bomb", metadataBomb).andExpect {
+            status { isBadRequest() }
+            jsonPath("$.detail") { value("the file is not a valid PMTiles archive") }
+        }
+        assertNull(basemaps.find("bomb"))
+        assertEquals(0, storedObjects("bomb"))
+    }
+
+    @Test
+    fun `the startup backfill skips an oversized metadata and describes the other basemaps`() {
+        legacy("bomb", metadataBomb)
+        legacy("old", TestPmtiles.build(tileType = 4, attribution = "© ALIAS"))
+        backfill.run(DefaultApplicationArguments())
+        assertEquals(BasemapKind.VECTOR, basemaps.find("bomb")!!.kind)
+        assertEquals(BasemapKind.RASTER, basemaps.find("old")!!.kind)
+    }
+
     @Test
     fun `a truncated archive is refused and nothing is stored`() {
         upload("cut", TestPmtiles.build(size = 10_000).copyOf(6_000)).andExpect {
@@ -95,18 +136,7 @@ class BasemapKindTest : IntegrationTest() {
 
     @Test
     fun `basemaps registered before this change get their kind and bounds at startup`() {
-        val bytes = TestPmtiles.build(tileType = 4, bounds = BBox(1.0, 2.0, 3.0, 4.0), attribution = "© ALIAS")
-        store.put("basemaps/old/1.pmtiles", bytes.inputStream(), bytes.size.toLong(), "application/vnd.pmtiles")
-        jdbc
-            .sql(
-                """
-                INSERT INTO basemap (id, name, size_bytes, object_key, sha256, signature, created_by, created_at)
-                VALUES ('old', 'Old', :size, 'basemaps/old/1.pmtiles', :sha, 'sig', 'root', :at)
-                """.trimIndent(),
-            ).param("size", bytes.size)
-            .param("sha", "d".repeat(64))
-            .param("at", Timestamp.from(Instant.now()))
-            .update()
+        legacy("old", TestPmtiles.build(tileType = 4, bounds = BBox(1.0, 2.0, 3.0, 4.0), attribution = "© ALIAS"))
         backfill.run(DefaultApplicationArguments())
         val old = basemaps.find("old")!!
         assertEquals(BasemapKind.RASTER, old.kind)
