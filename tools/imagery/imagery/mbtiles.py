@@ -25,3 +25,11 @@ def write(path, metadata, tiles):
     db.commit()
     db.close()
     return written
+
+
+def zoom_range(path):
+    """The zooms the archive really holds, which GDAL derives from the source resolution."""
+    db = sqlite3.connect(path)
+    zooms = db.execute("SELECT MIN(zoom_level), MAX(zoom_level) FROM tiles").fetchone()
+    db.close()
+    return zooms

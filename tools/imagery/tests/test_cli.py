@@ -43,19 +43,20 @@ class CliTest(unittest.TestCase):
 
 class GdalCliTest(unittest.TestCase):
     GDAL_BASE = ["gdal", "input.tif", "--name", "Paris", "--licence", "Etalab 2.0",
-                 "--attribution", "© IGN", "--zooms", "10-12", "--yes"]
+                 "--attribution", "© IGN", "--yes"]
 
-    def fake_gdal(self, source, out, zmax):
+    def fake_gdal(self, source, out):
         db = sqlite3.connect(out)
         db.executescript(
             "CREATE TABLE metadata (name TEXT, value TEXT);"
             "CREATE TABLE tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);"
         )
         db.executemany("INSERT INTO metadata VALUES (?, ?)", [("name", "gdal-name"), ("minzoom", "0")])
+        db.executemany("INSERT INTO tiles VALUES (?, 0, 0, x'00')", [(13,), (14,), (15,)])
         db.commit()
         db.close()
 
-    def test_gdal_metadata_keeps_one_row_per_key_with_cli_values(self):
+    def test_gdal_metadata_keeps_one_row_per_key_with_the_zooms_gdal_produced(self):
         captured = {}
 
         def fake_convert(src, dst):
@@ -72,7 +73,9 @@ class GdalCliTest(unittest.TestCase):
                                  convert=fake_convert, gdal=self.fake_gdal)
         self.assertEqual(code, 0)
         self.assertEqual(captured["name"], "Paris")
-        self.assertEqual(captured["minzoom"], "10")
+        self.assertEqual(captured["minzoom"], "13")
+        self.assertEqual(captured["maxzoom"], "15")
+        self.assertIn("zooms 13-15", out.getvalue())
         self.assertEqual(captured["attribution"], "© IGN")
         self.assertEqual(captured["licence"], "Etalab 2.0")
         self.assertEqual(captured["rows"], 7)

@@ -19,7 +19,7 @@ def main(argv=None, fetch=sources.fetch_ign, convert=None, gdal=sources.gdal_mbt
     parser.add_argument("source", choices=["ign", "gdal"])
     parser.add_argument("input", nargs="?", help="GeoTIFF/JP2 file for the gdal source")
     parser.add_argument("--bbox", help="west,south,east,north (ign source)")
-    parser.add_argument("--zooms", required=True, help="min-max, e.g. 10-17")
+    parser.add_argument("--zooms", help="min-max, e.g. 10-17 (ign source; GDAL picks its own zooms)")
     parser.add_argument("--name", required=True)
     parser.add_argument("--attribution")
     parser.add_argument("--licence", required=True)
@@ -32,14 +32,11 @@ def main(argv=None, fetch=sources.fetch_ign, convert=None, gdal=sources.gdal_mbt
     if not args.attribution:
         print("--attribution est obligatoire : la carte doit citer la source de l'imagerie.")
         return 2
-    zmin, zmax = (int(z) for z in args.zooms.split("-"))
     convert = convert or pmtiles_convert(args.pmtiles)
     metadata = {
         "name": args.name,
         "format": "jpg",
         "type": "baselayer",
-        "minzoom": zmin,
-        "maxzoom": zmax,
         "attribution": args.attribution,
         "licence": args.licence,
     }
@@ -47,6 +44,11 @@ def main(argv=None, fetch=sources.fetch_ign, convert=None, gdal=sources.gdal_mbt
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp) / "imagery.mbtiles"
         if args.source == "ign":
+            if not args.zooms:
+                print("--zooms est obligatoire pour la source ign.")
+                return 2
+            zmin, zmax = (int(z) for z in args.zooms.split("-"))
+            metadata["minzoom"], metadata["maxzoom"] = zmin, zmax
             bbox = tuple(float(v) for v in args.bbox.split(","))
             total = tiles.count(bbox, zmin, zmax)
             print(f"{total} tuiles, environ {total * TILE_KB // 1024} Mo")
@@ -64,8 +66,9 @@ def main(argv=None, fetch=sources.fetch_ign, convert=None, gdal=sources.gdal_mbt
             if not sources.gdal_available():
                 print("GDAL est introuvable : installez gdal_translate et gdaladdo.")
                 return 2
-            print(f"Conversion locale : pas d'estimation préalable, zooms {zmin}-{zmax}.")
-            gdal(args.input, str(work), zmax)
+            gdal(args.input, str(work))
+            metadata["minzoom"], metadata["maxzoom"] = mbtiles.zoom_range(work)
+            print(f"Conversion locale : pas d'estimation préalable, zooms {metadata['minzoom']}-{metadata['maxzoom']}.")
             mbtiles.write(work, metadata, [])
         convert(work, Path(args.out))
     print(f"Écrit : {args.out}")

@@ -22,12 +22,14 @@ python3 -m imagery ign --bbox W,S,E,N --zooms 10-17 --name NAME \
     --attribution TEXT --licence TEXT --out OUT.pmtiles \
     [--max-tiles N] [--yes] [--pmtiles PATH]
 
-python3 -m imagery gdal INPUT.tif --zooms 10-17 --name NAME \
-    --attribution TEXT --licence TEXT --out OUT.pmtiles \
-    [--max-tiles N] [--yes] [--pmtiles PATH]
+python3 -m imagery gdal INPUT.tif --name NAME \
+    --attribution TEXT --licence TEXT --out OUT.pmtiles [--pmtiles PATH]
 ```
 
-L'outil affiche une estimation (nombre de tuiles, taille approximative en Mo à
+Avec la source `gdal`, les zooms ne se choisissent pas : GDAL les déduit de la
+résolution du fichier, et l'outil affiche ceux réellement produits.
+
+Pour la source `ign`, l'outil affiche une estimation (nombre de tuiles, taille approximative en Mo à
 20 ko/tuile), demande une confirmation sauf si `--yes` est fourni, et refuse de
 continuer au-delà de `--max-tiles` (50 000 par défaut) ou si `--attribution`
 n'est pas renseigné.

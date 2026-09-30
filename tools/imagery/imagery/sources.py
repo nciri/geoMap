@@ -41,6 +41,7 @@ def gdal_available():
     return shutil.which("gdal_translate") is not None and shutil.which("gdaladdo") is not None
 
 
-def gdal_mbtiles(source, out, zmax):
+def gdal_mbtiles(source, out):
     subprocess.run(["gdal_translate", "-of", "MBTILES", "-co", "TILE_FORMAT=JPEG", source, out], check=True)
-    subprocess.run(["gdaladdo", "-r", "average", out, *[str(2**i) for i in range(1, zmax)]], check=True)
+    # GDAL stops adding overview levels once one fits in a single tile, so a generous list is safe.
+    subprocess.run(["gdaladdo", "-r", "average", out, *[str(2**i) for i in range(1, 20)]], check=True)
