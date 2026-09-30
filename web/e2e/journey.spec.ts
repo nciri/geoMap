@@ -21,11 +21,10 @@ interface StoredFeature {
 async function uploadBasemap(page: Page, id: string, name: string) {
   await page.getByLabel("Identifiant").fill(id);
   await page.getByLabel("Nom").fill(name);
-  // The server does not parse PMTiles on upload; the map then shows its "unreadable basemap" alert.
   await page.getByLabel("Fichier PMTiles").setInputFiles({
     name: `${id}.pmtiles`,
     mimeType: "application/octet-stream",
-    buffer: randomBytes(4096),
+    buffer: readFileSync("e2e/fixtures/vector.pmtiles"),
   });
   await page.getByRole("button", { name: "Importer" }).click();
   await expect(page.getByRole("status")).toContainText(name);
