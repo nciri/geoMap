@@ -2,6 +2,7 @@
 check: web/node_modules
 	cd shared && ./gradlew check
 	cd server && ./gradlew check
+	cd tools/imagery && python3 -m unittest discover -s tests -t .
 	cd web && npm run check
 
 web/node_modules: web/package-lock.json

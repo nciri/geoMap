@@ -6,3 +6,4 @@ local.properties
 .kotlin/
 node_modules/
 web/dist/
+__pycache__/
