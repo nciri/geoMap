@@ -2,7 +2,7 @@ import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listBasemaps, uploadBasemap, type BasemapKind } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { formatUtc } from "../format";
+import { attributionText, formatUtc } from "../format";
 
 const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} Mo`;
 const KIND_LABELS: Record<BasemapKind, string> = {
@@ -103,7 +103,7 @@ export function BasemapsPage() {
               <td>{b.name}</td>
               <td>{b.id}</td>
               <td>{KIND_LABELS[b.kind]}</td>
-              <td>{b.attribution}</td>
+              <td>{attributionText(b.attribution)}</td>
               <td>{megabytes(b.sizeBytes)}</td>
               <td>
                 {formatUtc(b.createdAt)} par {b.createdBy}

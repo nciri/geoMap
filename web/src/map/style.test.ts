@@ -80,3 +80,19 @@ it("still shows imagery without a vector basemap", () => {
   const style = basemapStyle({ vector: null, imagery: [paris] });
   expect(style.layers.map((l) => l.id)).toEqual(["background", "imagery-paris-ortho"]);
 });
+
+it("hands MapLibre attributions as escaped text, with entities decoded", () => {
+  const hostile = {
+    id: "paris-ortho",
+    name: "Paris",
+    attribution: '<img src=x onerror="alert(1)">&copy; IGN <script>alert(2)</script>',
+  };
+  const style = basemapStyle({
+    vector: { ...vector, attribution: "&copy; OpenStreetMap" },
+    imagery: [hostile],
+  });
+  expect(style.sources[BASEMAP_SOURCE]).toMatchObject({ attribution: "© OpenStreetMap" });
+  const imagery = (style.sources["imagery-paris-ortho"] as { attribution: string }).attribution;
+  expect(imagery).not.toMatch(/<|>/);
+  expect(imagery).toContain("© IGN");
+});

@@ -74,7 +74,7 @@ it("shows each basemap's type and attribution", async () => {
   server.use(
     http.get("/api/basemaps", () =>
       HttpResponse.json([
-        basemap({ kind: "VECTOR", attribution: "© OpenStreetMap" }),
+        basemap({ kind: "VECTOR", attribution: "&copy; OpenStreetMap" }),
         basemap({ id: "paris-ortho", name: "Paris ortho", kind: "RASTER", attribution: "© IGN" }),
       ]),
     ),
@@ -83,6 +83,7 @@ it("shows each basemap's type and attribution", async () => {
   expect(await screen.findByText("Imagerie")).toBeInTheDocument();
   expect(screen.getByText("Vectoriel")).toBeInTheDocument();
   expect(screen.getByText("© IGN")).toBeInTheDocument();
+  expect(screen.getByText("© OpenStreetMap")).toBeInTheDocument();
 });
 
 it("refuses to submit without a file", async () => {

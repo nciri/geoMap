@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listBasemaps, type Mission, type MissionInput } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { fromUtcInput, toUtcInput } from "../format";
+import { attributionText, fromUtcInput, toUtcInput } from "../format";
 
 interface Props {
   initial?: Mission;
@@ -27,7 +27,8 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
   const setImagery = (update: (current: string[]) => string[]) =>
     setLayers([...(vector ? [vector] : []), ...update(imagery)]);
   const nameOf = (id: string) => basemaps.data?.find((b) => b.id === id)?.name ?? id;
-  const attributionOf = (id: string) => basemaps.data?.find((b) => b.id === id)?.attribution ?? "";
+  const attributionOf = (id: string) =>
+    attributionText(basemaps.data?.find((b) => b.id === id)?.attribution ?? "");
 
   function move(index: number, delta: number) {
     setImagery((current) => {

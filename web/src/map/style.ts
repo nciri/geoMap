@@ -1,6 +1,7 @@
 import { layers, namedFlavor } from "@protomaps/basemaps";
 import type { LayerSpecification, StyleSpecification } from "maplibre-gl";
 import { basemapTilesUrl } from "../api/geomap";
+import { attributionText } from "../format";
 
 export const BASEMAP_SOURCE = "basemap";
 export const MAP_FONTS = ["Noto Sans Regular", "Noto Sans Medium", "Noto Sans Italic"];
@@ -10,6 +11,11 @@ export interface StackLayer {
   id: string;
   name: string;
   attribution: string;
+}
+
+// MapLibre's attribution control renders its strings as HTML.
+function attributionHtml(attribution: string): string {
+  return attributionText(attribution).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
 export function absoluteTilesUrl(basemapId: string): string {
@@ -49,7 +55,7 @@ export function basemapStyle(stack: {
             [BASEMAP_SOURCE]: {
               type: "vector" as const,
               url: `pmtiles://${absoluteTilesUrl(stack.vector.id)}`,
-              attribution: stack.vector.attribution,
+              attribution: attributionHtml(stack.vector.attribution),
             },
           }
         : {}),
@@ -60,7 +66,7 @@ export function basemapStyle(stack: {
             type: "raster" as const,
             url: `pmtiles://${absoluteTilesUrl(layer.id)}`,
             tileSize: 256,
-            attribution: layer.attribution,
+            attribution: attributionHtml(layer.attribution),
           },
         ]),
       ),
