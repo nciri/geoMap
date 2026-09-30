@@ -176,6 +176,8 @@ export function MissionEditorPage() {
         </details>
         <DrawToolbar
           mode={drawing.mode}
+          // Terra Draw exists only once the map has loaded; earlier clicks would be dropped.
+          disabled={!map}
           onMode={(next) => {
             setSelectedId(null);
             setPlacing(null);

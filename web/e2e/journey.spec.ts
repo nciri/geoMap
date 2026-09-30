@@ -56,6 +56,9 @@ test("a planner draws, symbolises, assigns, publishes and exports a mission", as
   await page.getByRole("link", { name: missionName }).click();
   await expect(page.getByRole("heading", { name: missionName })).toBeVisible();
   await expect(page.locator("canvas.maplibregl-canvas")).toBeVisible();
+  // The view jumps to the basemap's extent once its header is read; drawing before that
+  // would place the closing click away from the first point.
+  await expect(page.locator(".maplibregl-ctrl-scale")).not.toContainText("km");
 
   // Zone: Terra Draw closes a polygon when its first point is clicked again.
   await page.getByRole("button", { name: "Zone" }).click();
@@ -120,6 +123,8 @@ test("reshaping stays safe: Delete key, switching objects and basemap, circle ra
   const features = () => api<StoredFeature[]>(page, `/api/missions/${missionId}/features`);
   const before = await features();
   const circle = before.find((f) => f.style?.radiusMeters)!;
+  // Map clicks are handled only once the map has loaded, which also enables the drawing tools.
+  await expect(page.getByRole("button", { name: "Zone", exact: true })).toBeEnabled();
 
   // Delete in select mode must not remove anything, locally or on the server.
   await page.getByRole("button", { name: /Sans nom.*Zone/ }).click();
