@@ -1,20 +1,37 @@
 import { act, screen, waitFor } from "@testing-library/react";
+import { useEffect, type ReactNode } from "react";
 import type { GeoJSONStoreFeatures } from "terra-draw";
 import userEvent from "@testing-library/user-event";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { server } from "../test/server";
 import { renderWithProviders } from "../test/render";
 import { basemap, feature, mission } from "../test/fixtures";
 import { MissionEditorPage } from "./MissionEditorPage";
 
+const mapMounts = vi.hoisted(() => ({ count: 0 }));
 vi.mock("../map/MapView", () => ({
-  MapView: (props: { basemapId: string | null; initialBounds?: unknown }) => (
-    <div
-      data-testid="map"
-      data-basemap={props.basemapId ?? ""}
-      data-bounds={JSON.stringify(props.initialBounds ?? null)}
-    />
-  ),
+  MapView: (props: {
+    vector: { id: string } | null;
+    imagery: { id: string }[];
+    mode: string;
+    initialBounds?: unknown;
+    children?: ReactNode;
+  }) => {
+    useEffect(() => {
+      mapMounts.count += 1;
+    }, []);
+    return (
+      <div
+        data-testid="map"
+        data-basemap={props.vector?.id ?? ""}
+        data-imagery={props.imagery.map((i) => i.id).join(",")}
+        data-mode={props.mode}
+        data-bounds={JSON.stringify(props.initialBounds ?? null)}
+      >
+        {props.children}
+      </div>
+    );
+  },
 }));
 
 // The map never loads in jsdom, so Terra Draw's finish events are fed to the page's handlers directly.
@@ -89,10 +106,61 @@ it("opens the mission on its basemap, framed on its objects", async () => {
 });
 
 it("still opens a mission without a basemap and says what to do", async () => {
-  serve(mission({ basemapId: null }), []);
+  serve(mission({ layers: [] }), []);
   renderWithProviders(<MissionEditorPage />, route);
   expect(await screen.findByRole("status")).toHaveTextContent("Aucun fond de carte");
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "");
+});
+
+it("waits for basemaps to load before opening the map, mounting it once with the vector id", async () => {
+  mapMounts.count = 0;
+  serve();
+  server.use(
+    http.get("/api/basemaps", async () => {
+      await delay(50);
+      return HttpResponse.json([basemap()]);
+    }),
+  );
+  renderWithProviders(<MissionEditorPage />, route);
+  // While basemaps are still loading, the page must not show the wrong "no basemap" status.
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "Op Nord" })).toBeInTheDocument();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "zone-nord");
+  expect(mapMounts.count).toBe(1);
+});
+
+it("shows the mission's imagery and remembers the chosen view", async () => {
+  serve(mission({ layers: ["zone-nord", "paris-ortho"] }));
+  server.use(
+    http.get("/api/basemaps", () =>
+      HttpResponse.json([
+        basemap(),
+        basemap({ id: "paris-ortho", name: "Paris", kind: "RASTER", attribution: "© IGN" }),
+      ]),
+    ),
+  );
+  renderWithProviders(<MissionEditorPage />, route);
+  const map = await screen.findByTestId("map");
+  expect(map).toHaveAttribute("data-basemap", "zone-nord");
+  expect(map).toHaveAttribute("data-imagery", "paris-ortho");
+  expect(map).toHaveAttribute("data-mode", "Carte");
+  await userEvent.click(screen.getByRole("button", { name: "Hybride" }));
+  expect(map).toHaveAttribute("data-mode", "Hybride");
+  expect(screen.getByRole("button", { name: "Hybride" })).toHaveAttribute("aria-pressed", "true");
+  expect(localStorage.getItem("geomap.mapMode")).toBe("Hybride");
+  localStorage.clear();
+});
+
+it("keeps the plain map when the mission has no imagery, whatever view was remembered", async () => {
+  localStorage.setItem("geomap.mapMode", "Satellite");
+  serve();
+  renderWithProviders(<MissionEditorPage />, route);
+  const map = await screen.findByTestId("map");
+  expect(map).toHaveAttribute("data-mode", "Carte");
+  expect(screen.getByRole("button", { name: "Carte" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.getByRole("button", { name: "Satellite" })).toBeDisabled();
+  localStorage.clear();
 });
 
 it("saves mission settings", async () => {
@@ -115,7 +183,7 @@ it("saves mission settings", async () => {
   await waitFor(() =>
     expect(patch).toEqual({
       name: "Op Nord 2",
-      basemapId: "zone-nord",
+      layers: ["zone-nord"],
       validUntil: "2026-10-02T06:00:00Z",
     }),
   );

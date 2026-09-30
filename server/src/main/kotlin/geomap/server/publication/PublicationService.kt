@@ -91,7 +91,8 @@ class PublicationService(
                 it.origin == FeatureOrigin.HUMAN ||
                     it.suggestionStatus == SuggestionStatus.ACCEPTED
             }
-        val basemap = basemaps.find(mission.basemapId!!)!!
+        // The validator guarantees an existing vector basemap first; imagery is not packaged yet (spec §3.4).
+        val basemap = basemaps.find(mission.layers.first())!!
         val now = clock.instant()
         val draft =
             MissionVersion(

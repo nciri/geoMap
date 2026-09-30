@@ -14,3 +14,10 @@ it("offers every drawing tool and marks the active one", async () => {
   await userEvent.click(screen.getByRole("button", { name: "Terminer" }));
   expect(onMode).toHaveBeenCalledWith("static");
 });
+
+it("keeps every tool disabled until the map can draw", () => {
+  render(<DrawToolbar mode="static" onMode={vi.fn()} disabled />);
+  for (const name of ["Point", "Ligne", "Zone", "Cercle", "Terminer"]) {
+    expect(screen.getByRole("button", { name })).toBeDisabled();
+  }
+});

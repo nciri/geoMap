@@ -54,7 +54,7 @@ class RepublishTest : IntegrationTest() {
                 .post("/api/missions") {
                     with(planner())
                     contentType = MediaType.APPLICATION_JSON
-                    content = """{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}"""
+                    content = """{"name":"Op Nord","layers":["zone-nord"],"validUntil":"2099-01-01T00:00:00Z"}"""
                 }.andReturn()
                 .response.contentAsString
         missionId = JsonPath.read(body, "$.id")

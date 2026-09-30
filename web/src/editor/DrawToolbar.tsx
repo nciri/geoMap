@@ -11,18 +11,27 @@ const TOOLS: { mode: DrawMode; label: string }[] = [
 export function DrawToolbar({
   mode,
   onMode,
+  disabled = false,
 }: {
   mode: ToolMode;
   onMode: (mode: DrawMode | "static") => void;
+  disabled?: boolean;
 }) {
   return (
     <div className="toolbar" role="toolbar" aria-label="Dessin">
       {TOOLS.map((tool) => (
-        <button key={tool.mode} aria-pressed={mode === tool.mode} onClick={() => onMode(tool.mode)}>
+        <button
+          key={tool.mode}
+          aria-pressed={mode === tool.mode}
+          disabled={disabled}
+          onClick={() => onMode(tool.mode)}
+        >
           {tool.label}
         </button>
       ))}
-      <button onClick={() => onMode("static")}>Terminer</button>
+      <button disabled={disabled} onClick={() => onMode("static")}>
+        Terminer
+      </button>
     </div>
   );
 }

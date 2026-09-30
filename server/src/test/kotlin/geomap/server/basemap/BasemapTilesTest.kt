@@ -2,16 +2,16 @@ package geomap.server.basemap
 
 import geomap.pkg.Sha256
 import geomap.server.IntegrationTest
+import geomap.server.TestPmtiles
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.put
-import kotlin.random.Random
 import kotlin.test.assertContentEquals
 
 class BasemapTilesTest : IntegrationTest() {
-    private val tiles = Random(11).nextBytes(200_000)
+    private val tiles = TestPmtiles.build(size = 200_000, seed = 11)
 
     @BeforeEach
     fun uploadBasemap() {

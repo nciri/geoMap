@@ -12,7 +12,7 @@ export interface Mission {
   id: string;
   name: string;
   status: MissionStatus;
-  basemapId: string | null;
+  layers: string[];
   validUntil: string | null;
   createdBy: string;
   updatedBy: string;
@@ -22,7 +22,7 @@ export interface Mission {
 
 export interface MissionInput {
   name: string;
-  basemapId?: string | null;
+  layers?: string[];
   validUntil?: string | null;
 }
 
@@ -67,9 +67,14 @@ export interface FeatureInput {
   modifiers?: Record<string, string> | null;
 }
 
+export type BasemapKind = "VECTOR" | "RASTER";
+
 export interface Basemap {
   id: string;
   name: string;
+  kind: BasemapKind;
+  attribution: string;
+  bounds: BBox | null;
   sizeBytes: number;
   sha256: string;
   createdBy: string;

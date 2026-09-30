@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { listBasemaps, type Mission, type MissionInput } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { fromUtcInput, toUtcInput } from "../format";
+import { attributionText, fromUtcInput, toUtcInput } from "../format";
 
 interface Props {
   initial?: Mission;
@@ -13,10 +13,35 @@ interface Props {
 export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
   const basemaps = useQuery({ queryKey: ["basemaps"], queryFn: listBasemaps });
   const [name, setName] = useState(initial?.name ?? "");
-  const [basemapId, setBasemapId] = useState(initial?.basemapId ?? "");
+  const [layers, setLayers] = useState<string[]>(initial?.layers ?? []);
   const [validUntil, setValidUntil] = useState(toUtcInput(initial?.validUntil ?? null));
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const vectors = basemaps.data?.filter((b) => b.kind === "VECTOR") ?? [];
+  const rasters = basemaps.data?.filter((b) => b.kind === "RASTER") ?? [];
+  // Split by kind, not position: an imagery-only mission has no vector layer first.
+  const vector = layers.find((id) => vectors.some((b) => b.id === id)) ?? "";
+  const imagery = layers.filter((id) => id !== vector);
+  const setVector = (id: string) => setLayers([...(id ? [id] : []), ...imagery]);
+  const setImagery = (update: (current: string[]) => string[]) =>
+    setLayers([...(vector ? [vector] : []), ...update(imagery)]);
+  const nameOf = (id: string) => basemaps.data?.find((b) => b.id === id)?.name ?? id;
+  const attributionOf = (id: string) =>
+    attributionText(basemaps.data?.find((b) => b.id === id)?.attribution ?? "");
+
+  function move(index: number, delta: number) {
+    setImagery((current) => {
+      const next = [...current];
+      const [moved] = next.splice(index, 1);
+      next.splice(index + delta, 0, moved);
+      return next;
+    });
+  }
+
+  function remove(index: number) {
+    setImagery((current) => current.filter((_, i) => i !== index));
+  }
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -25,12 +50,12 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
     try {
       await onSubmit({
         name: name.trim(),
-        basemapId: basemapId || null,
+        layers: [...(vector ? [vector] : []), ...imagery],
         validUntil: fromUtcInput(validUntil),
       });
       if (!initial) {
         setName("");
-        setBasemapId("");
+        setLayers([]);
         setValidUntil("");
       }
     } catch (e) {
@@ -48,15 +73,57 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
       </label>
       <label>
         Fond de carte
-        <select value={basemapId} onChange={(e) => setBasemapId(e.target.value)}>
+        <select value={vector} onChange={(e) => setVector(e.target.value)}>
           <option value="">— aucun —</option>
-          {basemaps.data?.map((b) => (
+          {vectors.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>
           ))}
         </select>
       </label>
+      <fieldset className="imagery">
+        <legend>Couches</legend>
+        <ul>
+          {imagery.map((id, index) => (
+            <li key={id}>
+              {nameOf(id)} — {attributionOf(id)}
+              <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
+                Monter {nameOf(id)}
+              </button>
+              <button
+                type="button"
+                disabled={index === imagery.length - 1}
+                onClick={() => move(index, 1)}
+              >
+                Descendre {nameOf(id)}
+              </button>
+              <button type="button" onClick={() => remove(index)}>
+                Retirer {nameOf(id)}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <label>
+          Ajouter une imagerie
+          <select
+            value=""
+            onChange={(e) => {
+              const id = e.target.value;
+              if (id) setImagery((current) => [...current, id]);
+            }}
+          >
+            <option value="">— choisir —</option>
+            {rasters
+              .filter((b) => !imagery.includes(b.id))
+              .map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      </fieldset>
       <label>
         Valide jusqu'au (UTC)
         <input

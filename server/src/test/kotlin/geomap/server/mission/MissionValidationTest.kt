@@ -53,7 +53,7 @@ class MissionValidationTest : IntegrationTest() {
         basemaps.insert(
             Basemap("zone-nord", "Zone Nord", 1, "basemaps/zone-nord/seed.pmtiles", "0".repeat(64), "c2ln", "root", Instant.now()),
         )
-        missionId = createMission("""{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}""")
+        missionId = createMission("""{"name":"Op Nord","layers":["zone-nord"],"validUntil":"2099-01-01T00:00:00Z"}""")
         assignments.replace(UUID.fromString(missionId), setOf(TestDevices.insert(devices, 'a').id))
     }
 
@@ -162,7 +162,8 @@ class MissionValidationTest : IntegrationTest() {
 
     @Test
     fun `a mission on an unregistered basemap is not publishable`() {
-        missionId = createMission("""{"name":"Op Sud","basemapId":"zone-sud","validUntil":"2099-01-01T00:00:00Z"}""")
+        // The API refuses unknown layers, so simulate a basemap that disappeared after the mission referenced it.
+        jdbc.sql("UPDATE mission SET layers = ARRAY['zone-sud'] WHERE id = CAST(:id AS uuid)").param("id", missionId).update()
         add(infantry)
         validation().andExpect {
             jsonPath("$.publishable") { value(false) }

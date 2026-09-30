@@ -1,10 +1,14 @@
 import { useRef, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { listBasemaps, uploadBasemap } from "../api/geomap";
+import { listBasemaps, uploadBasemap, type BasemapKind } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { formatUtc } from "../format";
+import { attributionText, formatUtc } from "../format";
 
 const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} Mo`;
+const KIND_LABELS: Record<BasemapKind, string> = {
+  VECTOR: "Vectoriel",
+  RASTER: "Imagerie",
+};
 
 export function BasemapsPage() {
   const queryClient = useQueryClient();
@@ -87,6 +91,8 @@ export function BasemapsPage() {
           <tr>
             <th>Nom</th>
             <th>Identifiant</th>
+            <th>Type</th>
+            <th>Attribution</th>
             <th>Taille</th>
             <th>Importé</th>
           </tr>
@@ -96,6 +102,8 @@ export function BasemapsPage() {
             <tr key={b.id}>
               <td>{b.name}</td>
               <td>{b.id}</td>
+              <td>{KIND_LABELS[b.kind]}</td>
+              <td>{attributionText(b.attribution)}</td>
               <td>{megabytes(b.sizeBytes)}</td>
               <td>
                 {formatUtc(b.createdAt)} par {b.createdBy}

@@ -1,5 +1,6 @@
 package geomap.server.mission
 
+import geomap.server.basemap.BasemapKind
 import geomap.server.basemap.BasemapRepository
 import geomap.server.device.AssignmentRepository
 import geomap.server.device.DeviceStatus
@@ -44,10 +45,22 @@ class MissionValidator(
         val errors = mutableListOf<ValidationIssue>()
         val warnings = mutableListOf<ValidationIssue>()
 
-        val basemapId = mission.basemapId
-        when {
-            basemapId == null -> errors += ValidationIssue("NO_BASEMAP", "mission has no basemap")
-            basemaps.find(basemapId) == null -> errors += ValidationIssue("UNKNOWN_BASEMAP", "basemap $basemapId is not registered")
+        val layers = mission.layers.map { it to basemaps.find(it) }
+        layers.filter { it.second == null }.forEach { (id, _) ->
+            errors += ValidationIssue("UNKNOWN_BASEMAP", "basemap $id is not registered")
+        }
+        if (layers.firstOrNull()?.second?.kind != BasemapKind.VECTOR) {
+            errors += ValidationIssue("NO_BASEMAP", "mission has no vector basemap")
+        }
+        val area =
+            published.map { it.bbox }.reduceOrNull { a, b ->
+                BBox(minOf(a.minLon, b.minLon), minOf(a.minLat, b.minLat), maxOf(a.maxLon, b.maxLon), maxOf(a.maxLat, b.maxLat))
+            }
+        layers.mapNotNull { it.second }.filter { it.kind == BasemapKind.RASTER }.forEach { imagery ->
+            val bounds = imagery.bounds
+            if (area != null && bounds != null && !intersects(area, bounds)) {
+                warnings += ValidationIssue("IMAGERY_OUT_OF_AREA", "imagery ${imagery.id} does not cover the mission objects")
+            }
         }
         val validUntil = mission.validUntil
         when {
@@ -70,6 +83,11 @@ class MissionValidator(
         if (published.isEmpty()) warnings += ValidationIssue("EMPTY_MISSION", "mission has no object to publish")
         return ValidationReport(errors, warnings)
     }
+
+    private fun intersects(
+        a: BBox,
+        b: BBox,
+    ) = a.minLon <= b.maxLon && b.minLon <= a.maxLon && a.minLat <= b.maxLat && b.minLat <= a.maxLat
 
     // ponytail: renders every symbol on each call; cache per (sidc, geometry, band) if large missions make validation slow.
     private fun renderingProblem(feature: Feature): String? =

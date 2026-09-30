@@ -18,3 +18,9 @@ export function toUtcInput(iso: string | null): string {
 export function fromUtcInput(value: string): string | null {
   return value ? `${value}:00Z` : null;
 }
+
+// Archive attributions are HTML fragments such as "&copy; OpenStreetMap": keep only their text.
+// A DOMParser document is inert, so nothing in the fragment runs or loads.
+export function attributionText(html: string): string {
+  return new DOMParser().parseFromString(html, "text/html").body.textContent?.trim() ?? "";
+}

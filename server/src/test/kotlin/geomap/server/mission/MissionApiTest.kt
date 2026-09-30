@@ -3,6 +3,8 @@ package geomap.server.mission
 import com.jayway.jsonpath.JsonPath
 import geomap.server.IntegrationTest
 import geomap.server.audit.AuditRepository
+import geomap.server.basemap.Basemap
+import geomap.server.basemap.BasemapRepository
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
@@ -11,11 +13,15 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
+import java.time.Instant
 import kotlin.test.assertEquals
 
 class MissionApiTest : IntegrationTest() {
     @Autowired
     private lateinit var audit: AuditRepository
+
+    @Autowired
+    private lateinit var basemaps: BasemapRepository
 
     private fun create(
         body: String = """{"name":"Op Nord"}""",
@@ -45,16 +51,17 @@ class MissionApiTest : IntegrationTest() {
 
     @Test
     fun `creates a draft mission owned by the caller`() {
+        basemaps.insert(Basemap("zone-nord", "Zone Nord", 1, "basemaps/zone-nord/x.pmtiles", "b".repeat(64), "c2ln", "root", Instant.now()))
         mvc
             .post("/api/missions") {
                 with(planner("bob"))
                 contentType = MediaType.APPLICATION_JSON
-                content = """{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}"""
+                content = """{"name":"Op Nord","layers":["zone-nord"],"validUntil":"2099-01-01T00:00:00Z"}"""
             }.andExpect {
                 status { isCreated() }
                 jsonPath("$.status") { value("DRAFT") }
                 jsonPath("$.name") { value("Op Nord") }
-                jsonPath("$.basemapId") { value("zone-nord") }
+                jsonPath("$.layers[0]") { value("zone-nord") }
                 jsonPath("$.createdBy") { value("bob") }
             }
     }
@@ -85,7 +92,7 @@ class MissionApiTest : IntegrationTest() {
             .post("/api/missions") {
                 with(planner())
                 contentType = MediaType.APPLICATION_JSON
-                content = """{"name":"Op","basemapId":"../etc"}"""
+                content = """{"name":"Op","layers":["../etc"]}"""
             }.andExpect { status { isBadRequest() } }
     }
 

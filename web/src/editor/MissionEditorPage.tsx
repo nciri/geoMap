@@ -6,6 +6,7 @@ import type { GeoJSONSource } from "maplibre-gl";
 import {
   createFeature,
   getMission,
+  listBasemaps,
   listFeatures,
   updateFeature,
   updateMission,
@@ -15,6 +16,9 @@ import { errorMessage } from "../api/client";
 import { STATUS_LABELS } from "../format";
 import { MissionForm } from "../missions/MissionForm";
 import { MapView } from "../map/MapView";
+import { ModeSwitch } from "../map/ModeSwitch";
+import { effectiveMode, loadMode, saveMode } from "../map/mapModes";
+import type { StackLayer } from "../map/style";
 import {
   addMissionLayers,
   boundsOf,
@@ -43,12 +47,14 @@ export function MissionEditorPage() {
     queryKey: ["features", missionId],
     queryFn: () => listFeatures(missionId),
   });
+  const basemaps = useQuery({ queryKey: ["basemaps"], queryFn: listBasemaps });
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedIdRef = useRef(selectedId);
   const [drawError, setDrawError] = useState<string | null>(null);
   const [placing, setPlacing] = useState<PlacedSymbol | null>(null);
   const placingRef = useRef(placing);
+  const [mode, setMode] = useState(loadMode);
   const refreshFeatures = () =>
     queryClient.invalidateQueries({ queryKey: ["features", missionId] });
 
@@ -130,18 +136,31 @@ export function MissionEditorPage() {
       ?.setData(toFeatureCollection(features.data, editingId));
   }, [map, features.data, editingId]);
 
-  if (mission.error || features.error) {
-    return <p role="alert">{errorMessage(mission.error ?? features.error)}</p>;
+  if (mission.error || features.error || basemaps.error) {
+    return <p role="alert">{errorMessage(mission.error ?? features.error ?? basemaps.error)}</p>;
   }
-  if (!mission.data || !features.data) return <p>Chargement…</p>;
+  if (!mission.data || !features.data || !basemaps.data) return <p>Chargement…</p>;
   const current = mission.data;
+  const basemapOf = (layerId: string) => basemaps.data.find((b) => b.id === layerId);
+  const toLayer = ({ id, name, attribution }: StackLayer): StackLayer => ({
+    id,
+    name,
+    attribution,
+  });
+  const first = basemapOf(current.layers[0] ?? "");
+  const vector = first?.kind === "VECTOR" ? toLayer(first) : null;
+  const imagery = current.layers.flatMap((layerId) => {
+    const layer = basemapOf(layerId);
+    return layer?.kind === "RASTER" ? [toLayer(layer)] : [];
+  });
+  const shown = effectiveMode(mode, imagery.length > 0);
 
   return (
     <div className="editor">
       <aside className="panel">
         <h1>{current.name}</h1>
         <p>{STATUS_LABELS[current.status]}</p>
-        {!current.basemapId && (
+        {!vector && (
           <p role="status">Aucun fond de carte : choisissez-en un dans les paramètres.</p>
         )}
         <details>
@@ -157,6 +176,8 @@ export function MissionEditorPage() {
         </details>
         <DrawToolbar
           mode={drawing.mode}
+          // Terra Draw exists only once the map has loaded; earlier clicks would be dropped.
+          disabled={!map}
           onMode={(next) => {
             setSelectedId(null);
             setPlacing(null);
@@ -198,15 +219,26 @@ export function MissionEditorPage() {
         />
       </aside>
       <MapView
-        key={current.basemapId ?? "none"}
-        basemapId={current.basemapId}
+        key={current.layers.join("|") || "none"}
+        vector={vector}
+        imagery={imagery}
+        mode={shown}
         initialBounds={boundsOf(features.data)}
         onReady={(ready) => {
           addMissionLayers(ready);
           addSymbolLayers(ready);
           setMap(ready);
         }}
-      />
+      >
+        <ModeSwitch
+          mode={shown}
+          hasImagery={imagery.length > 0}
+          onMode={(next) => {
+            saveMode(next);
+            setMode(next);
+          }}
+        />
+      </MapView>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import geomap.pkg.BasemapSignature
 import geomap.pkg.Sha256
 import geomap.pkg.unb64
 import geomap.server.IntegrationTest
+import geomap.server.TestPmtiles
 import geomap.server.security.ServerSigningKey
 import geomap.server.storage.ObjectStore
 import org.junit.jupiter.api.Test
@@ -16,7 +17,6 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor
 import java.nio.file.Files
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors
-import kotlin.random.Random
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
@@ -31,7 +31,7 @@ class BasemapApiTest : IntegrationTest() {
     @Autowired
     private lateinit var signingKey: ServerSigningKey
 
-    private val tiles = Random(7).nextBytes(200_000)
+    private val tiles = TestPmtiles.build(size = 200_000, seed = 7)
 
     private fun upload(
         id: String = "zone-nord",
@@ -66,7 +66,7 @@ class BasemapApiTest : IntegrationTest() {
     @Test
     fun `a registered basemap cannot be replaced`() {
         upload()
-        upload(bytes = Random(8).nextBytes(1000)).andExpect { status { isConflict() } }
+        upload(bytes = TestPmtiles.build(size = 1000, seed = 8)).andExpect { status { isConflict() } }
         assertContentEquals(tiles, stored("zone-nord"))
     }
 
@@ -103,7 +103,7 @@ class BasemapApiTest : IntegrationTest() {
 
     @Test
     fun `concurrent uploads of the same id register exactly one basemap whose signature matches its stored bytes`() {
-        val contents = listOf(Random(11).nextBytes(200_000), Random(13).nextBytes(200_000))
+        val contents = listOf(TestPmtiles.build(size = 200_000, seed = 11), TestPmtiles.build(size = 200_000, seed = 13))
         val pool = Executors.newFixedThreadPool(2)
         val tasks =
             contents.map { bytes ->
