@@ -67,7 +67,7 @@ class GdalCliTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             target = Path(tmp) / "out.pmtiles"
             out = io.StringIO()
-            with redirect_stdout(out):
+            with mock.patch("imagery.sources.gdal_available", return_value=True), redirect_stdout(out):
                 code = cli.main(list(self.GDAL_BASE) + ["--out", str(target)],
                                  convert=fake_convert, gdal=self.fake_gdal)
         self.assertEqual(code, 0)
