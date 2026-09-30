@@ -1,5 +1,6 @@
 """Tile sources: the IGN Géoplateforme WMTS and local rasters through GDAL."""
 
+import shutil
 import subprocess
 import time
 import urllib.request
@@ -34,6 +35,10 @@ def ign_tiles(bbox, zmin, zmax, fetch=fetch_ign, workers=6, missing=None):
                     missing.append(tile)
                 continue
             yield tile, data
+
+
+def gdal_available():
+    return shutil.which("gdal_translate") is not None and shutil.which("gdaladdo") is not None
 
 
 def gdal_mbtiles(source, out, zmax):

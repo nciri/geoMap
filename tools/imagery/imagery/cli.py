@@ -14,7 +14,7 @@ def pmtiles_convert(pmtiles_bin):
     return lambda src, dst: subprocess.run([pmtiles_bin, "convert", str(src), str(dst)], check=True)
 
 
-def main(argv=None, fetch=sources.fetch_ign, convert=None):
+def main(argv=None, fetch=sources.fetch_ign, convert=None, gdal=sources.gdal_mbtiles):
     parser = argparse.ArgumentParser(prog="imagery")
     parser.add_argument("source", choices=["ign", "gdal"])
     parser.add_argument("input", nargs="?", help="GeoTIFF/JP2 file for the gdal source")
@@ -61,7 +61,11 @@ def main(argv=None, fetch=sources.fetch_ign, convert=None):
             if missing:
                 print(f"{len(missing)} tuiles manquantes")
         else:
-            sources.gdal_mbtiles(args.input, str(work), zmax)
+            if not sources.gdal_available():
+                print("GDAL est introuvable : installez gdal_translate et gdaladdo.")
+                return 2
+            print(f"Conversion locale : pas d'estimation préalable, zooms {zmin}-{zmax}.")
+            gdal(args.input, str(work), zmax)
             mbtiles.write(work, metadata, [])
         convert(work, Path(args.out))
     print(f"Écrit : {args.out}")

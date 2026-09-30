@@ -10,7 +10,11 @@ def write(path, metadata, tiles):
         "CREATE TABLE IF NOT EXISTS tiles (zoom_level INTEGER, tile_column INTEGER, tile_row INTEGER, tile_data BLOB);"
         "CREATE UNIQUE INDEX IF NOT EXISTS tile_index ON tiles (zoom_level, tile_column, tile_row);"
     )
-    db.executemany("INSERT INTO metadata VALUES (?, ?)", [(k, str(v)) for k, v in metadata.items()])
+    # Keep one row per key: a GDAL-written MBTiles already has its own metadata
+    # rows (name, format, minzoom…), so replace rather than append.
+    for key, value in metadata.items():
+        db.execute("DELETE FROM metadata WHERE name = ?", (key,))
+        db.execute("INSERT INTO metadata VALUES (?, ?)", (key, str(value)))
     written = 0
     for (z, x, y), data in tiles:
         # MBTiles rows count from the bottom (TMS).
