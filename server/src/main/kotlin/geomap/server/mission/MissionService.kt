@@ -2,6 +2,8 @@ package geomap.server.mission
 
 import geomap.server.audit.AuditEvent
 import geomap.server.audit.AuditRepository
+import geomap.server.basemap.BasemapKind
+import geomap.server.basemap.BasemapRepository
 import geomap.server.publication.MissionVersionRepository
 import geomap.server.security.Actor
 import geomap.server.web.ConflictException
@@ -16,13 +18,13 @@ import java.util.UUID
 
 data class MissionInput(
     val name: String,
-    val basemapId: String? = null,
+    val layers: List<String>? = null,
     val validUntil: Instant? = null,
 )
 
 data class MissionPatch(
     val name: String? = null,
-    val basemapId: String? = null,
+    val layers: List<String>? = null,
     val validUntil: Instant? = null,
 )
 
@@ -32,6 +34,7 @@ class MissionService(
     private val audit: AuditRepository,
     private val clock: Clock,
     private val versions: MissionVersionRepository,
+    private val basemaps: BasemapRepository,
 ) {
     @Transactional
     fun create(
@@ -44,7 +47,7 @@ class MissionService(
                 id = UUID.randomUUID(),
                 name = validName(input.name),
                 status = MissionStatus.DRAFT,
-                basemapId = input.basemapId?.let(::validBasemapId),
+                layers = input.layers?.let(::validLayers).orEmpty(),
                 validUntil = input.validUntil?.let { validExpiry(it, now) },
                 createdBy = actor.user,
                 updatedBy = actor.user,
@@ -73,11 +76,11 @@ class MissionService(
         val updated =
             current.copy(
                 name = patch.name?.let(::validName) ?: current.name,
-                basemapId = patch.basemapId?.let(::validBasemapId) ?: current.basemapId,
+                layers = patch.layers?.let(::validLayers) ?: current.layers,
                 validUntil = patch.validUntil?.let { validExpiry(it, now) } ?: current.validUntil,
             )
         missions.update(updated.copy(status = MissionStatus.DRAFT, updatedBy = actor.user, updatedAt = now))
-        val fields = listOfNotNull(patch.name?.let { "name" }, patch.basemapId?.let { "basemapId" }, patch.validUntil?.let { "validUntil" })
+        val fields = listOfNotNull(patch.name?.let { "name" }, patch.layers?.let { "layers" }, patch.validUntil?.let { "validUntil" })
         record(actor, "mission.update", "mission:$id", mapOf("fields" to fields))
         return get(id)
     }
@@ -139,9 +142,16 @@ class MissionService(
         return trimmed
     }
 
-    private fun validBasemapId(id: String): String {
-        if (!BASEMAP_ID.matches(id)) throw InvalidInputException("basemapId must match ${BASEMAP_ID.pattern}")
-        return id
+    private fun validLayers(ids: List<String>): List<String> {
+        ids.forEach { if (!BASEMAP_ID.matches(it)) throw InvalidInputException("layers must match ${BASEMAP_ID.pattern}") }
+        ids.groupingBy { it }.eachCount().filterValues { it > 1 }.keys.firstOrNull()?.let {
+            throw InvalidInputException("basemap $it is listed twice")
+        }
+        val kinds = ids.map { basemaps.find(it)?.kind ?: throw InvalidInputException("unknown basemap $it") }
+        val vectors = kinds.count { it == BasemapKind.VECTOR }
+        if (vectors > 1) throw InvalidInputException("a mission has at most one vector basemap")
+        if (vectors == 1 && kinds.first() != BasemapKind.VECTOR) throw InvalidInputException("the vector basemap must come first")
+        return ids
     }
 
     private fun validExpiry(

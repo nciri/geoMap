@@ -16,8 +16,8 @@ class MissionRepository(
         jdbc
             .sql(
                 """
-                INSERT INTO mission (id, name, status, basemap_id, valid_until, created_by, updated_by, created_at, updated_at)
-                VALUES (:id, :name, :status, :basemapId, :validUntil, :createdBy, :updatedBy, :createdAt, :updatedAt)
+                INSERT INTO mission (id, name, status, layers, valid_until, created_by, updated_by, created_at, updated_at)
+                VALUES (:id, :name, :status, :layers, :validUntil, :createdBy, :updatedBy, :createdAt, :updatedAt)
                 """.trimIndent(),
             ).bind(mission)
             .param("createdBy", mission.createdBy)
@@ -30,7 +30,7 @@ class MissionRepository(
             .sql(
                 """
                 UPDATE mission
-                SET name = :name, status = :status, basemap_id = :basemapId, valid_until = :validUntil,
+                SET name = :name, status = :status, layers = :layers, valid_until = :validUntil,
                     updated_by = :updatedBy, updated_at = :updatedAt
                 WHERE id = :id
                 """.trimIndent(),
@@ -95,7 +95,7 @@ class MissionRepository(
         param("id", mission.id)
             .param("name", mission.name)
             .param("status", mission.status.name)
-            .param("basemapId", mission.basemapId)
+            .param("layers", mission.layers.toTypedArray())
             .param("validUntil", mission.validUntil?.toUtc())
             .param("updatedBy", mission.updatedBy)
             .param("updatedAt", mission.updatedAt.toUtc())
@@ -105,7 +105,7 @@ class MissionRepository(
             id = rs.getObject("id", UUID::class.java),
             name = rs.getString("name"),
             status = MissionStatus.valueOf(rs.getString("status")),
-            basemapId = rs.getString("basemap_id"),
+            layers = (rs.getArray("layers").array as Array<*>).map { it as String },
             validUntil = rs.instant("valid_until"),
             createdBy = rs.getString("created_by"),
             updatedBy = rs.getString("updated_by"),

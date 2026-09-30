@@ -15,7 +15,7 @@ data class Mission(
     val id: UUID,
     val name: String,
     val status: MissionStatus,
-    val basemapId: String?,
+    val layers: List<String>,
     val validUntil: Instant?,
     val createdBy: String,
     val updatedBy: String,

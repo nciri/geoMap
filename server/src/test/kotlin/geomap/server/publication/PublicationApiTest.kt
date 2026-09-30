@@ -11,10 +11,12 @@ import geomap.pkg.ZoomBand
 import geomap.server.IntegrationTest
 import geomap.server.TestDevices
 import geomap.server.basemap.Basemap
+import geomap.server.basemap.BasemapKind
 import geomap.server.basemap.BasemapRepository
 import geomap.server.device.AssignmentRepository
 import geomap.server.device.Device
 import geomap.server.device.DeviceRepository
+import geomap.server.mission.BBox
 import geomap.server.security.ServerSigningKey
 import geomap.server.storage.ObjectStore
 import org.junit.jupiter.api.BeforeEach
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.patch
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.RequestPostProcessor
 import java.time.Instant
@@ -60,7 +63,7 @@ class PublicationApiTest : IntegrationTest() {
                 .post("/api/missions") {
                     with(planner())
                     contentType = MediaType.APPLICATION_JSON
-                    content = """{"name":"Op Nord","basemapId":"zone-nord","validUntil":"2099-01-01T00:00:00Z"}"""
+                    content = """{"name":"Op Nord","layers":["zone-nord"],"validUntil":"2099-01-01T00:00:00Z"}"""
                 }.andReturn()
                 .response.contentAsString
         missionId = JsonPath.read(body, "$.id")
@@ -122,6 +125,32 @@ class PublicationApiTest : IntegrationTest() {
     }
 
     @Test
+    fun `the package carries the vector basemap, not the imagery above it`() {
+        basemaps.insert(
+            Basemap(
+                "paris-ortho",
+                "Paris ortho",
+                1,
+                "basemaps/paris-ortho/x.pmtiles",
+                "c".repeat(64),
+                "c2ln",
+                "root",
+                Instant.now(),
+                kind = BasemapKind.RASTER,
+                bounds = BBox(2.2, 48.78, 2.47, 48.94),
+            ),
+        )
+        mvc
+            .patch("/api/missions/$missionId") {
+                with(planner())
+                contentType = MediaType.APPLICATION_JSON
+                content = """{"layers":["zone-nord","paris-ortho"]}"""
+            }.andExpect { status { isOk() } }
+        publish().andExpect { status { isCreated() } }
+        assertEquals("zone-nord", open(latestPackage()).first.basemap.id)
+    }
+
+    @Test
     fun `each publication is a new version`() {
         publish()
         publish().andExpect { jsonPath("$.version") { value(2) } }
@@ -142,7 +171,7 @@ class PublicationApiTest : IntegrationTest() {
 
     @Test
     fun `an unpublishable mission is refused and nothing is stored`() {
-        jdbc.sql("UPDATE mission SET basemap_id = NULL WHERE id = CAST(:id AS uuid)").param("id", missionId).update()
+        jdbc.sql("UPDATE mission SET layers = '{}' WHERE id = CAST(:id AS uuid)").param("id", missionId).update()
         publish().andExpect {
             status { isConflict() }
             jsonPath("$.detail") { value("mission is not publishable: NO_BASEMAP") }

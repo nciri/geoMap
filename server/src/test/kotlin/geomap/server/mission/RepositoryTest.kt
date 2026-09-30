@@ -31,7 +31,7 @@ class RepositoryTest : IntegrationTest() {
             id = UUID.randomUUID(),
             name = name,
             status = MissionStatus.DRAFT,
-            basemapId = null,
+            layers = emptyList(),
             validUntil = null,
             createdBy = "alice",
             updatedBy = "alice",
@@ -68,7 +68,13 @@ class RepositoryTest : IntegrationTest() {
     fun `updates a mission`() {
         val mission = mission()
         missions.insert(mission)
-        val updated = mission.copy(name = "Op Sud", basemapId = "zone-sud", validUntil = now.plusSeconds(3600), updatedBy = "bob")
+        val updated =
+            mission.copy(
+                name = "Op Sud",
+                layers = listOf("zone-sud", "zone-ortho"),
+                validUntil = now.plusSeconds(3600),
+                updatedBy = "bob",
+            )
         missions.update(updated)
         assertEquals(updated, missions.find(mission.id))
     }
