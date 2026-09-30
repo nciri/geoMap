@@ -6,6 +6,7 @@ import type { GeoJSONSource } from "maplibre-gl";
 import {
   createFeature,
   getMission,
+  listBasemaps,
   listFeatures,
   updateFeature,
   updateMission,
@@ -43,6 +44,7 @@ export function MissionEditorPage() {
     queryKey: ["features", missionId],
     queryFn: () => listFeatures(missionId),
   });
+  const basemaps = useQuery({ queryKey: ["basemaps"], queryFn: listBasemaps });
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selectedIdRef = useRef(selectedId);
@@ -135,13 +137,18 @@ export function MissionEditorPage() {
   }
   if (!mission.data || !features.data) return <p>Chargement…</p>;
   const current = mission.data;
+  const firstLayer = current.layers[0];
+  const vectorId =
+    firstLayer && basemaps.data?.find((b) => b.id === firstLayer)?.kind === "VECTOR"
+      ? firstLayer
+      : null;
 
   return (
     <div className="editor">
       <aside className="panel">
         <h1>{current.name}</h1>
         <p>{STATUS_LABELS[current.status]}</p>
-        {!current.basemapId && (
+        {!vectorId && (
           <p role="status">Aucun fond de carte : choisissez-en un dans les paramètres.</p>
         )}
         <details>
@@ -198,8 +205,8 @@ export function MissionEditorPage() {
         />
       </aside>
       <MapView
-        key={current.basemapId ?? "none"}
-        basemapId={current.basemapId}
+        key={vectorId ?? "none"}
+        basemapId={vectorId}
         initialBounds={boundsOf(features.data)}
         onReady={(ready) => {
           addMissionLayers(ready);

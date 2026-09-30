@@ -5,7 +5,7 @@ export function mission(overrides: Partial<Mission> = {}): Mission {
     id: "11111111-1111-4111-8111-111111111111",
     name: "Op Nord",
     status: "DRAFT",
-    basemapId: "zone-nord",
+    layers: ["zone-nord"],
     validUntil: "2026-10-02T06:00:00Z",
     createdBy: "alice",
     updatedBy: "alice",
@@ -39,6 +39,9 @@ export function basemap(overrides: Partial<Basemap> = {}): Basemap {
   return {
     id: "zone-nord",
     name: "Zone Nord",
+    kind: "VECTOR",
+    attribution: "© OpenStreetMap",
+    bounds: { minLon: 2, minLat: 48, maxLon: 3, maxLat: 49 },
     sizeBytes: 1000,
     sha256: "a".repeat(64),
     createdBy: "admin",

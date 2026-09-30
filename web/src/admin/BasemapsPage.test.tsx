@@ -70,6 +70,21 @@ it("shows the server's refusal", async () => {
   expect(await screen.findByRole("alert")).toHaveTextContent("basemap zone-nord already exists");
 });
 
+it("shows each basemap's type and attribution", async () => {
+  server.use(
+    http.get("/api/basemaps", () =>
+      HttpResponse.json([
+        basemap({ kind: "VECTOR", attribution: "© OpenStreetMap" }),
+        basemap({ id: "paris-ortho", name: "Paris ortho", kind: "RASTER", attribution: "© IGN" }),
+      ]),
+    ),
+  );
+  renderWithProviders(<BasemapsPage />);
+  expect(await screen.findByText("Imagerie")).toBeInTheDocument();
+  expect(screen.getByText("Vectoriel")).toBeInTheDocument();
+  expect(screen.getByText("© IGN")).toBeInTheDocument();
+});
+
 it("refuses to submit without a file", async () => {
   server.use(http.get("/api/basemaps", () => HttpResponse.json([])));
   renderWithProviders(<BasemapsPage />);

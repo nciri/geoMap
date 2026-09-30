@@ -16,6 +16,7 @@ import { saveFile } from "../files";
 export const VALIDATION_LABELS: Record<string, string> = {
   NO_BASEMAP: "Aucun fond de carte",
   UNKNOWN_BASEMAP: "Fond de carte inconnu",
+  IMAGERY_OUT_OF_AREA: "Imagerie hors de la zone des objets",
   NO_EXPIRY: "Aucune date de validité",
   EXPIRED: "Date de validité dépassée",
   NO_RECIPIENT: "Aucun terminal enrôlé affecté",

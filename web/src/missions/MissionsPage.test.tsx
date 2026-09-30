@@ -48,7 +48,7 @@ it("creates a mission with a basemap and a UTC expiry", async () => {
   await waitFor(() =>
     expect(body).toEqual({
       name: "Op Nord",
-      basemapId: "zone-nord",
+      layers: ["zone-nord"],
       validUntil: "2026-10-02T06:00:00Z",
     }),
   );

@@ -89,7 +89,7 @@ it("opens the mission on its basemap, framed on its objects", async () => {
 });
 
 it("still opens a mission without a basemap and says what to do", async () => {
-  serve(mission({ basemapId: null }), []);
+  serve(mission({ layers: [] }), []);
   renderWithProviders(<MissionEditorPage />, route);
   expect(await screen.findByRole("status")).toHaveTextContent("Aucun fond de carte");
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "");
@@ -115,7 +115,7 @@ it("saves mission settings", async () => {
   await waitFor(() =>
     expect(patch).toEqual({
       name: "Op Nord 2",
-      basemapId: "zone-nord",
+      layers: ["zone-nord"],
       validUntil: "2026-10-02T06:00:00Z",
     }),
   );
