@@ -28,12 +28,24 @@ interface Props {
   theme: ResolvedTheme;
   initialBounds?: LngLatBounds2 | null;
   onReady?: (map: maplibregl.Map) => void;
+  /** The map was removed (rebuild or unmount); `onReady` follows when a new one loads. */
+  onRemoved?: () => void;
   children?: ReactNode;
 }
 
-export function MapView({ vector, imagery, mode, theme, initialBounds, onReady, children }: Props) {
+export function MapView({
+  vector,
+  imagery,
+  mode,
+  theme,
+  initialBounds,
+  onReady,
+  onRemoved,
+  children,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const onReadyRef = useRef(onReady);
+  const onRemovedRef = useRef(onRemoved);
   const initialBoundsRef = useRef(initialBounds);
   const stackRef = useRef({ vector, imagery });
   // The view to restore when the map is rebuilt for a new theme.
@@ -54,6 +66,7 @@ export function MapView({ vector, imagery, mode, theme, initialBounds, onReady, 
 
   useEffect(() => {
     onReadyRef.current = onReady;
+    onRemovedRef.current = onRemoved;
     initialBoundsRef.current = initialBounds;
     stackRef.current = { vector, imagery };
   });
@@ -131,6 +144,7 @@ export function MapView({ vector, imagery, mode, theme, initialBounds, onReady, 
         pitch: created.getPitch(),
       };
       created.remove();
+      onRemovedRef.current?.();
       // pmtiles 4.5 has no removal method; its registry is a public Map keyed by source.
       for (const archive of archives) {
         const key = archive.source.getKey();

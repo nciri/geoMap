@@ -57,18 +57,18 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
 
   const loadError = devices.error ?? assigned.error;
   return (
-    <section className="assignment">
-      <h2>Terminaux affectés</h2>
+    <section className="assignment panel-section">
+      <h3 className="panel-section__title">Terminaux affectés</h3>
       {loadError && <Alert severity="error" title={errorMessage(loadError)} />}
       {devices.data?.length === 0 && (
-        <p>Aucun terminal enregistré : demandez à un administrateur.</p>
+        <p className="form-empty">Aucun terminal enregistré : demandez à un administrateur.</p>
       )}
       <ul>
         {devices.data?.map((d) => {
           const revoked = d.status === "REVOKED";
           return (
             <li key={d.id}>
-              <label>
+              <label className="device-row">
                 <input
                   type="checkbox"
                   checked={selection.has(d.id)}

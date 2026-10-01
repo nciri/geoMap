@@ -49,7 +49,7 @@ it("finds a unit, builds its SIDC from identity and echelon, and places it", asy
   const user = userEvent.setup();
   await user.type(screen.getByLabelText("Rechercher un symbole"), "infantry");
   await user.click(await screen.findByRole("button", { name: /Infantry/ }));
-  expect(screen.getByRole("heading", { name: "Land Unit" })).toBeInTheDocument();
+  expect(screen.getByText("Land Unit", { selector: "summary" })).toBeInTheDocument();
   await user.selectOptions(screen.getByLabelText("Identité"), "6");
   await user.selectOptions(screen.getByLabelText("Échelon"), "16");
   await user.type(screen.getByLabelText("Désignation"), "1ER RI");

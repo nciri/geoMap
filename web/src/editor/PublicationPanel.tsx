@@ -30,11 +30,20 @@ interface Props {
   mission: Mission;
   revision: string;
   onSelectFeature: (featureId: string) => void;
+  /** The checklist, versions and secondary actions; the publish bar always shows. */
+  showDetails?: boolean;
+  onShowDetails?: () => void;
 }
 
 const terminals = (n: number) => `${n} ${n > 1 ? "terminaux" : "terminal"}`;
 
-export function PublicationPanel({ mission, revision, onSelectFeature }: Props) {
+export function PublicationPanel({
+  mission,
+  revision,
+  onSelectFeature,
+  showDetails = true,
+  onShowDetails,
+}: Props) {
   const queryClient = useQueryClient();
   const validation = useQuery({
     queryKey: ["validation", mission.id, revision],
@@ -97,30 +106,108 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
     );
   };
 
+  const blocking = validation.data?.errors.length ?? 0;
   return (
-    <section className="publication">
-      <h2>Publication</h2>
-      {validation.error && <Alert severity="error" title={errorMessage(validation.error)} />}
-      {validation.data &&
-        (validation.data.errors.length === 0 ? (
-          <p>Aucune erreur bloquante.</p>
-        ) : (
-          <ul aria-label="Erreurs bloquantes" className="errors">
-            {validation.data.errors.map(issue(true))}
-          </ul>
-        ))}
-      {validation.data && validation.data.warnings.length > 0 && (
-        <ul aria-label="Avertissements" className="warnings">
-          {validation.data.warnings.map(issue(false))}
-        </ul>
+    <>
+      {showDetails && (
+        <section className="publication panel-section">
+          <h3 className="panel-section__title">Publication</h3>
+          {validation.error && <Alert severity="error" title={errorMessage(validation.error)} />}
+          {validation.data &&
+            (validation.data.errors.length === 0 ? (
+              <p className="publication__ok">
+                <StatusBadge state="ok">Prête</StatusBadge> Aucune erreur bloquante.
+              </p>
+            ) : (
+              <ul aria-label="Erreurs bloquantes" className="errors">
+                {validation.data.errors.map(issue(true))}
+              </ul>
+            ))}
+          {validation.data && validation.data.warnings.length > 0 && (
+            <ul aria-label="Avertissements" className="warnings">
+              {validation.data.warnings.map(issue(false))}
+            </ul>
+          )}
+          {withdrawn ? (
+            <p className="muted">
+              Mission retirée : les terminaux la suppriment au prochain contact.
+            </p>
+          ) : (
+            published && (
+              <div className="actions">
+                <Button
+                  icon="download"
+                  disabled={busy}
+                  onClick={() =>
+                    void run(async () => {
+                      const file = await downloadPackage(mission.id);
+                      saveFile(file.blob, file.filename);
+                      return null;
+                    })
+                  }
+                >
+                  Exporter pour carte SD
+                </Button>
+                {confirmWithdraw ? (
+                  <>
+                    <Button
+                      variant="irreversible"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          await withdrawMission(mission.id);
+                          setConfirmWithdraw(false);
+                          return "Mission retirée.";
+                        })
+                      }
+                    >
+                      Confirmer le retrait
+                    </Button>
+                    <Button variant="ghost" onClick={() => setConfirmWithdraw(false)}>
+                      Annuler
+                    </Button>
+                  </>
+                ) : (
+                  <Button icon="revoke" onClick={() => setConfirmWithdraw(true)}>
+                    Retirer la mission
+                  </Button>
+                )}
+              </div>
+            )
+          )}
+          {versions.error && <Alert severity="error" title={errorMessage(versions.error)} />}
+          {published && (
+            <>
+              <h3 className="panel-section__title">Versions publiées</h3>
+              <ul aria-label="Versions publiées" className="versions">
+                {[...versions.data!]
+                  .sort((a, b) => b.version - a.version)
+                  .map((v) => (
+                    <li key={v.version}>
+                      v{v.version} — {formatUtc(v.publishedAt)} par {v.publishedBy} —{" "}
+                      {terminals(v.recipients)} — {Math.ceil(v.sizeBytes / 1024)} Ko
+                    </li>
+                  ))}
+              </ul>
+            </>
+          )}
+        </section>
       )}
-      {withdrawn ? (
-        <p>Mission retirée : les terminaux la suppriment au prochain contact.</p>
-      ) : (
-        <div className="actions">
+      <footer className="publish-bar">
+        {notice && <Alert title={notice} />}
+        {error && <Alert severity="error" title={error} />}
+        {!withdrawn && blocking > 0 && (
+          <button type="button" className="publish-bar__summary" onClick={onShowDetails}>
+            <StatusBadge state="error">
+              {blocking} {blocking > 1 ? "erreurs bloquantes" : "erreur bloquante"}
+            </StatusBadge>
+          </button>
+        )}
+        {!withdrawn && (
           <Button
             variant="primary"
             icon="publish"
+            className="publish-bar__button"
             disabled={busy || blocked}
             onClick={() =>
               void run(async () => {
@@ -131,61 +218,8 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
           >
             Publier la version {nextVersion}
           </Button>
-          {published && (
-            <Button
-              icon="download"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const file = await downloadPackage(mission.id);
-                  saveFile(file.blob, file.filename);
-                  return null;
-                })
-              }
-            >
-              Exporter pour carte SD
-            </Button>
-          )}
-          {published &&
-            (confirmWithdraw ? (
-              <>
-                <Button
-                  variant="irreversible"
-                  disabled={busy}
-                  onClick={() =>
-                    void run(async () => {
-                      await withdrawMission(mission.id);
-                      setConfirmWithdraw(false);
-                      return "Mission retirée.";
-                    })
-                  }
-                >
-                  Confirmer le retrait
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmWithdraw(false)}>
-                  Annuler
-                </Button>
-              </>
-            ) : (
-              <Button onClick={() => setConfirmWithdraw(true)}>Retirer la mission</Button>
-            ))}
-        </div>
-      )}
-      {notice && <Alert title={notice} />}
-      {error && <Alert severity="error" title={error} />}
-      {versions.error && <Alert severity="error" title={errorMessage(versions.error)} />}
-      {published && (
-        <ul aria-label="Versions publiées">
-          {[...versions.data!]
-            .sort((a, b) => b.version - a.version)
-            .map((v) => (
-              <li key={v.version}>
-                v{v.version} — {formatUtc(v.publishedAt)} par {v.publishedBy} —{" "}
-                {terminals(v.recipients)} — {Math.ceil(v.sizeBytes / 1024)} Ko
-              </li>
-            ))}
-        </ul>
-      )}
-    </section>
+        )}
+      </footer>
+    </>
   );
 }

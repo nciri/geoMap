@@ -178,7 +178,10 @@ it("saves mission settings", async () => {
   );
   renderWithProviders(<MissionEditorPage />, route);
   const user = userEvent.setup();
-  await user.click(await screen.findByText("Paramètres"));
+  const settings = await screen.findByRole("button", { name: "Paramètres" });
+  expect(settings).toHaveAttribute("aria-expanded", "false");
+  await user.click(settings);
+  expect(settings).toHaveAttribute("aria-expanded", "true");
   await screen.findByRole("option", { name: "Zone Nord" });
   const name = screen.getByRole("textbox", { name: "Nom" });
   await user.clear(name);
@@ -250,4 +253,44 @@ it("hands the theme to the map and keeps the editor working when it changes", as
   expect(screen.getByTestId("map")).toHaveAttribute("data-theme", "light");
   expect(screen.queryByRole("alert")).toBeNull();
   expect(screen.getByRole("heading", { name: /Objets/ })).toBeInTheDocument();
+});
+
+it("groups the panel in tabs and keeps publishing within reach from each of them", async () => {
+  serve();
+  renderWithProviders(<MissionEditorPage />, route);
+  const user = userEvent.setup();
+  expect(await screen.findByRole("heading", { level: 2, name: "Op Nord" })).toBeInTheDocument();
+  expect(screen.getByText(/Valide jusqu'au 2026-10-02 06:00Z/)).toBeInTheDocument();
+  const tabs = screen.getAllByRole("tab");
+  expect(tabs.map((t) => t.textContent)).toEqual(["Objets", "Symboles", "Diffusion"]);
+  for (const tab of tabs) expect(tab.querySelector("svg.al-icon")).not.toBeNull();
+  expect(screen.getByRole("tab", { name: "Objets" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("toolbar", { name: "Dessin" })).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "Terminaux affectés" })).toBeNull();
+  expect(await screen.findByRole("button", { name: /Publier la version 1/ })).toBeVisible();
+
+  await user.click(screen.getByRole("tab", { name: "Symboles" }));
+  expect(screen.getByLabelText("Rechercher un symbole")).toBeVisible();
+  expect(screen.getByRole("button", { name: /Publier la version 1/ })).toBeVisible();
+
+  await user.click(screen.getByRole("tab", { name: "Diffusion" }));
+  expect(screen.getByRole("heading", { name: "Terminaux affectés" })).toBeVisible();
+  expect(screen.getByRole("button", { name: /Publier la version 1/ })).toBeVisible();
+});
+
+it("opens the Diffusion tab from the blocking summary", async () => {
+  serve();
+  server.use(
+    http.get(`/api/missions/${id}/validation`, () =>
+      HttpResponse.json({
+        errors: [{ code: "NO_RECIPIENT", message: "no device", featureId: null }],
+        warnings: [],
+      }),
+    ),
+  );
+  renderWithProviders(<MissionEditorPage />, route);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "1 erreur bloquante" }));
+  expect(screen.getByRole("tab", { name: "Diffusion" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByText("Aucun terminal enrôlé affecté")).toBeVisible();
 });

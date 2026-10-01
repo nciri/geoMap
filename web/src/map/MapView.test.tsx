@@ -138,3 +138,15 @@ it("shows each unreadable layer once after a theme rebuild", async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
   expect(screen.getAllByRole("alert")).toHaveLength(1);
 });
+
+it("tells its owner when the map goes away, so tools wait for the next one", () => {
+  const onRemoved = vi.fn();
+  const { rerender } = render(
+    <MapView vector={vector} imagery={[]} mode="Carte" theme="light" onRemoved={onRemoved} />,
+  );
+  expect(onRemoved).not.toHaveBeenCalled();
+  rerender(
+    <MapView vector={vector} imagery={[]} mode="Carte" theme="dark" onRemoved={onRemoved} />,
+  );
+  expect(onRemoved).toHaveBeenCalledTimes(1);
+});

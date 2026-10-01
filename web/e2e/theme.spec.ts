@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { expect, test } from "./fixtures";
-import { signIn } from "./helpers";
+import { chooseTheme, signIn, userMenu } from "./helpers";
 import { mapPoint } from "./map";
 
 test.describe.configure({ mode: "serial" });
@@ -23,7 +23,7 @@ test("an administrator imports a basemap for the theme journey", async ({ page }
 
 test("a planner switches theme while editing and the map stays where it was", async ({ page }) => {
   await signIn(page, "planner");
-  await page.getByRole("button", { name: "Nuit", exact: true }).click();
+  await chooseTheme(page, "Nuit");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
   await page.getByLabel("Nom").fill(`Op Thème ${suffix}`);
@@ -38,18 +38,28 @@ test("a planner switches theme while editing and the map stays where it was", as
   await expect(page.getByRole("button", { name: /Sans nom.*Point/ })).toBeVisible();
   const scale = await page.locator(".maplibregl-ctrl-scale").textContent();
 
-  await page.getByRole("button", { name: "Jour", exact: true }).click();
+  // Reshaping the point when the theme changes.
+  await page.getByRole("button", { name: /Sans nom.*Point/ }).click();
+  await expect(page.getByLabel("Nom de l'objet")).toBeVisible();
+  await chooseTheme(page, "Jour");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
   await expect(page.getByRole("button", { name: "Zone", exact: true })).toBeEnabled();
   await expect(page.locator(".maplibregl-ctrl-scale")).toHaveText(scale!);
   await expect(page.getByRole("button", { name: /Sans nom.*Point/ })).toBeVisible();
   await expect(page.getByRole("alert")).toHaveCount(0);
+  // The rebuilt map drops the reshape handles; drawing starts again from the toolbar.
+  await page.getByRole("button", { name: "Zone", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Zone", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
-  await page.getByRole("button", { name: "Nuit", exact: true }).click();
+  await chooseTheme(page, "Nuit");
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.getByRole("button", { name: "Nuit", exact: true })).toHaveAttribute(
-    "aria-pressed",
+  await userMenu(page).click();
+  await expect(page.getByRole("menuitemradio", { name: "Nuit" })).toHaveAttribute(
+    "aria-checked",
     "true",
   );
 });
