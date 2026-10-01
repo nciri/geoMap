@@ -7,6 +7,8 @@ import { server } from "../test/server";
 import { renderWithProviders } from "../test/render";
 import { basemap, feature, mission } from "../test/fixtures";
 import { MissionEditorPage } from "./MissionEditorPage";
+import { renderHook } from "@testing-library/react";
+import { useTheme } from "../ui/theme";
 
 const mapMounts = vi.hoisted(() => ({ count: 0 }));
 vi.mock("../map/MapView", () => ({
@@ -14,6 +16,7 @@ vi.mock("../map/MapView", () => ({
     vector: { id: string } | null;
     imagery: { id: string }[];
     mode: string;
+    theme: string;
     initialBounds?: unknown;
     children?: ReactNode;
   }) => {
@@ -26,6 +29,7 @@ vi.mock("../map/MapView", () => ({
         data-basemap={props.vector?.id ?? ""}
         data-imagery={props.imagery.map((i) => i.id).join(",")}
         data-mode={props.mode}
+        data-theme={props.theme}
         data-bounds={JSON.stringify(props.initialBounds ?? null)}
       >
         {props.children}
@@ -232,4 +236,18 @@ it("says so when the reshaped object was deleted meanwhile", async () => {
     "Cet objet n'existe plus : il a été supprimé entre-temps.",
   );
   expect(drawing.stopEditing).toHaveBeenCalled();
+});
+
+it("hands the theme to the map and keeps the editor working when it changes", async () => {
+  serve();
+  renderWithProviders(<MissionEditorPage />, route);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: /PC avancé/ }));
+  const { result } = renderHook(() => useTheme());
+  act(() => result.current.setPreference("dark"));
+  expect(screen.getByTestId("map")).toHaveAttribute("data-theme", "dark");
+  act(() => result.current.setPreference("light"));
+  expect(screen.getByTestId("map")).toHaveAttribute("data-theme", "light");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("heading", { name: /Objets/ })).toBeInTheDocument();
 });

@@ -221,43 +221,53 @@ button.link {
   position: relative;
   flex: 1;
   min-height: 0;
+  background: var(--bg-000);
 }
 .map-frame .map {
   /* Outranks maplibre-gl.css (.maplibregl-map is relative), which the lazy map chunk loads last. */
   position: absolute;
   inset: 0;
 }
-.coordinates {
-  position: absolute;
-  right: 0.5rem;
-  bottom: 1.5rem;
-  display: flex;
-  gap: 1rem;
-  padding: 0.25rem 0.5rem;
-  background: var(--bg-100);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
+.map-mode {
+  top: var(--space-3);
+  right: 56px;
+  z-index: 2;
+}
+.map-coords {
+  right: var(--space-3);
+  bottom: 28px;
+  z-index: 2;
 }
 .map-alerts {
   position: absolute;
-  top: 0.5rem;
+  top: var(--space-3);
   left: 50%;
-  transform: translateX(-50%);
-  z-index: 2;
-}
-.map-alerts p {
-  margin: 0 0 0.25rem;
-  padding: 0.25rem 0.75rem;
-  background: var(--bg-100);
-}
-.mode-switch {
-  position: absolute;
-  top: 0.5rem;
-  right: 3rem;
   z-index: 2;
   display: flex;
-  gap: 0.25rem;
+  flex-direction: column;
+  gap: var(--space-1);
+  transform: translateX(-50%);
 }
-.mode-switch [aria-pressed="true"] {
-  font-weight: bold;
+.map-alerts .al-mappanel {
+  position: static;
+}
+.maplibregl-ctrl-group {
+  background: var(--bg-100);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-overlay);
+}
+.maplibregl-ctrl-group button + button {
+  border-top-color: var(--line);
+}
+[data-map-theme="dark"] .maplibregl-ctrl-group .maplibregl-ctrl-icon {
+  filter: invert(1);
+}
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-scale {
+  background: var(--bg-100);
+  color: var(--text-muted);
+  border-color: var(--line-strong);
+}
+.maplibregl-ctrl-attrib a {
+  color: var(--accent-text);
 }

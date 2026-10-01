@@ -193,9 +193,12 @@ export function Alert({
   time,
   children,
   who,
+  hint,
 }: {
   severity?: keyof typeof ALERT_ICONS;
   title: string;
+  /** Technical cause, kept as a tooltip so the French message stays readable. */
+  hint?: string;
   time?: string;
   children?: ReactNode;
   who?: { role: string; step: string };
@@ -204,6 +207,7 @@ export function Alert({
     <div
       className={cx("al-alert", severity !== "info" && `al-alert--${severity}`)}
       role={severity === "error" ? "alert" : "status"}
+      title={hint}
     >
       <span className="al-alert__glyph">
         <Icon name={ALERT_ICONS[severity]} size={18} />

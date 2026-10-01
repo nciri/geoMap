@@ -3,6 +3,9 @@ import type { LayerSpecification } from "maplibre-gl";
 import type { FeatureCollection, Point } from "geojson";
 import type { Feature, GraphicCollection } from "../api/geomap";
 import { MAP_FONTS } from "./style";
+import { mapColors } from "../ui/mapColors";
+
+const MAP = mapColors("light");
 
 export type Band = "LOW" | "MID" | "HIGH";
 
@@ -182,8 +185,8 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
     source: FALLBACK_SOURCE,
     paint: {
       "circle-radius": 6,
-      "circle-color": "#6c6f85",
-      "circle-stroke-color": "#ffffff",
+      "circle-color": MAP.guide,
+      "circle-stroke-color": MAP.halo,
       "circle-stroke-width": 2,
       "circle-opacity": ["case", ["get", "pending"], 0.6, 1],
     },
@@ -199,7 +202,7 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
       "text-offset": [0, 1.2],
       "text-anchor": "top",
     },
-    paint: { "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
+    paint: { "text-halo-color": MAP.halo, "text-halo-width": 1.5 },
   },
   {
     id: "mission-symbol",
@@ -218,7 +221,7 @@ export const SYMBOL_LAYERS: LayerSpecification[] = [
     },
     paint: {
       "icon-opacity": ["case", ["get", "pending"], 0.6, 1],
-      "text-halo-color": "#ffffff",
+      "text-halo-color": MAP.halo,
       "text-halo-width": 1.5,
     },
   },

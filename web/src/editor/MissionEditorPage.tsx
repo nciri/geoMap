@@ -15,6 +15,7 @@ import {
 import { errorMessage } from "../api/client";
 import { missionState, STATUS_LABELS } from "../format";
 import { Alert, StatusBadge } from "../ui/components";
+import { useTheme } from "../ui/theme";
 import { MissionForm } from "../missions/MissionForm";
 import { MapView } from "../map/MapView";
 import { ModeSwitch } from "../map/ModeSwitch";
@@ -56,6 +57,7 @@ export function MissionEditorPage() {
   const [placing, setPlacing] = useState<PlacedSymbol | null>(null);
   const placingRef = useRef(placing);
   const [mode, setMode] = useState(loadMode);
+  const { resolved: theme } = useTheme();
   const refreshFeatures = () =>
     queryClient.invalidateQueries({ queryKey: ["features", missionId] });
 
@@ -236,11 +238,14 @@ export function MissionEditorPage() {
         vector={vector}
         imagery={imagery}
         mode={shown}
+        theme={theme}
         initialBounds={boundsOf(features.data)}
         onReady={(ready) => {
           addMissionLayers(ready);
           addSymbolLayers(ready);
           setMap(ready);
+          // A theme change rebuilds the map: the object being reshaped was on the removed one.
+          if (selectedIdRef.current) select(null);
         }}
       >
         <ModeSwitch

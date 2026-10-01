@@ -1,11 +1,25 @@
+import { MapPanel } from "../ui/components";
 import { formatLatLon, formatMgrs } from "./coordinates";
 
 export function CoordinateReadout({ position }: { position: { lng: number; lat: number } | null }) {
-  if (!position) return <div className="coordinates">Survolez la carte</div>;
   return (
-    <div className="coordinates">
-      <span>{formatMgrs(position.lng, position.lat)}</span>
-      <span>{formatLatLon(position.lng, position.lat)}</span>
-    </div>
+    <MapPanel className="map-coords">
+      <div className="al-coords" aria-live="polite">
+        {position ? (
+          <>
+            <span>
+              <span className="al-coords__k">MGRS</span>
+              {formatMgrs(position.lng, position.lat)}
+            </span>
+            <span>
+              <span className="al-coords__k">LAT/LON</span>
+              {formatLatLon(position.lng, position.lat)}
+            </span>
+          </>
+        ) : (
+          "Survolez la carte"
+        )}
+      </div>
+    </MapPanel>
   );
 }
