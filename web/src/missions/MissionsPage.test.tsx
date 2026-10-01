@@ -39,6 +39,9 @@ it("creates a mission with a basemap and a UTC expiry", async () => {
   );
   renderWithProviders(<MissionsPage />);
   const user = userEvent.setup();
+  expect(screen.queryByRole("textbox", { name: "Nom" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Nouvelle mission" }));
+  expect(screen.getByRole("dialog", { name: "Nouvelle mission" })).toBeInTheDocument();
   await user.type(screen.getByRole("textbox", { name: "Nom" }), "  Op Nord ");
   await screen.findByRole("option", { name: "Zone Nord" });
   await user.selectOptions(screen.getByLabelText("Fond de carte"), "zone-nord");
@@ -53,6 +56,9 @@ it("creates a mission with a basemap and a UTC expiry", async () => {
     }),
   );
   expect(await screen.findByRole("link", { name: "Op Nord" })).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("button", { name: "Nouvelle mission" })).toHaveFocus();
+  await user.click(screen.getByRole("button", { name: "Nouvelle mission" }));
   expect(screen.getByRole("textbox", { name: "Nom" })).toHaveValue("");
   expect(screen.getByLabelText("Fond de carte")).toHaveDisplayValue("— aucun —");
   expect(screen.getByLabelText("Valide jusqu'au (UTC)")).toHaveValue("");
@@ -113,7 +119,23 @@ it("shows the server's reason when a creation is refused", async () => {
   );
   renderWithProviders(<MissionsPage />);
   const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Nouvelle mission" }));
   await user.type(screen.getByRole("textbox", { name: "Nom" }), "x");
   await user.click(screen.getByRole("button", { name: "Créer la mission" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("name must not be blank");
+  // A refused creation keeps the dialog and what was typed.
+  expect(screen.getByRole("textbox", { name: "Nom" })).toHaveValue("x");
+});
+
+it("cancels a new mission without sending anything", async () => {
+  serve([]);
+  const created = vi.fn();
+  server.use(http.post("/api/missions", () => created()));
+  renderWithProviders(<MissionsPage />);
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Nouvelle mission" }));
+  await user.type(screen.getByRole("textbox", { name: "Nom" }), "Op Brouillon");
+  await user.click(screen.getByRole("button", { name: "Annuler" }));
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(created).not.toHaveBeenCalled();
 });

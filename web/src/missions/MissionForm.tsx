@@ -9,9 +9,10 @@ interface Props {
   initial?: Mission;
   submitLabel: string;
   onSubmit: (input: MissionInput) => Promise<unknown>;
+  onCancel?: () => void;
 }
 
-export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
+export function MissionForm({ initial, submitLabel, onSubmit, onCancel }: Props) {
   const basemaps = useQuery({ queryKey: ["basemaps"], queryFn: listBasemaps });
   const [name, setName] = useState(initial?.name ?? "");
   const [layers, setLayers] = useState<string[]>(initial?.layers ?? []);
@@ -198,6 +199,11 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
       {basemaps.error && <Alert severity="error" title={errorMessage(basemaps.error)} />}
       {error && <Alert severity="error" title={error} />}
       <div className="form-actions">
+        {onCancel && (
+          <Button variant="ghost" onClick={onCancel}>
+            Annuler
+          </Button>
+        )}
         {/* Creating is the missions page's one action; in the editor, publishing is. */}
         <Button
           type="submit"

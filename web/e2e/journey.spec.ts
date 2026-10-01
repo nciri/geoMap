@@ -48,6 +48,7 @@ test("an administrator prepares basemaps and a device", async ({ page }) => {
 
 test("a planner draws, symbolises, assigns, publishes and exports a mission", async ({ page }) => {
   await signIn(page, "planner");
+  await page.getByRole("button", { name: "Nouvelle mission" }).click();
   await page.getByLabel("Nom").fill(missionName);
   await page.getByLabel("Fond de carte").selectOption({ label: `Zone A ${suffix}` });
   const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);

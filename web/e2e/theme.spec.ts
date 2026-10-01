@@ -26,6 +26,7 @@ test("a planner switches theme while editing and the map stays where it was", as
   await chooseTheme(page, "Nuit");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
 
+  await page.getByRole("button", { name: "Nouvelle mission" }).click();
   await page.getByLabel("Nom").fill(`Op Thème ${suffix}`);
   await page.getByLabel("Fond de carte").selectOption({ label: `Thème ${suffix}` });
   await page.getByRole("button", { name: "Créer la mission" }).click();

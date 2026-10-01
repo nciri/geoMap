@@ -5,6 +5,7 @@ import { createMission, deleteMission, listMissions } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { formatUtc, missionState, STATUS_LABELS } from "../format";
 import { Alert, Button, IconButton, StatusBadge } from "../ui/components";
+import { Dialog } from "../ui/Dialog";
 import { MissionForm } from "./MissionForm";
 
 export function MissionsPage() {
@@ -12,6 +13,7 @@ export function MissionsPage() {
   const missions = useQuery({ queryKey: ["missions"], queryFn: listMissions });
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["missions"] });
 
   async function remove(id: string) {
@@ -27,14 +29,29 @@ export function MissionsPage() {
 
   return (
     <main className="page">
-      <h2 className="section-title">Nouvelle mission</h2>
-      <MissionForm
-        submitLabel="Créer la mission"
-        onSubmit={async (input) => {
-          await createMission(input);
-          await refresh();
-        }}
-      />
+      <div className="page-toolbar">
+        <p className="muted">
+          {missions.data
+            ? `${missions.data.length} mission${missions.data.length > 1 ? "s" : ""}`
+            : ""}
+        </p>
+        <Button variant="primary" icon="plus" onClick={() => setCreating(true)}>
+          Nouvelle mission
+        </Button>
+      </div>
+      {creating && (
+        <Dialog title="Nouvelle mission" onClose={() => setCreating(false)}>
+          <MissionForm
+            submitLabel="Créer la mission"
+            onCancel={() => setCreating(false)}
+            onSubmit={async (input) => {
+              await createMission(input);
+              setCreating(false);
+              await refresh();
+            }}
+          />
+        </Dialog>
+      )}
       {missions.isPending && <Alert title="Chargement…" />}
       {missions.error && <Alert severity="error" title={errorMessage(missions.error)} />}
       {error && <Alert severity="error" title={error} />}

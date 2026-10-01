@@ -37,6 +37,7 @@ test("a planner stacks imagery and switches between Carte, Satellite and Hybride
   page,
 }) => {
   await signIn(page, "planner");
+  await page.getByRole("button", { name: "Nouvelle mission" }).click();
   await page.getByLabel("Nom").fill(missionName);
   await page.getByLabel("Fond de carte").selectOption({ label: `base-${suffix}` });
   await page.getByLabel("Ajouter une imagerie").selectOption({ label: `ortho-${suffix}` });

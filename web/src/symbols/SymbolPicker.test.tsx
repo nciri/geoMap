@@ -86,3 +86,16 @@ it("shows the server's reason when the search fails", async () => {
   await userEvent.type(screen.getByLabelText("Rechercher un symbole"), "xx");
   expect(await screen.findByRole("alert")).toHaveTextContent("limit must be between 1 and 100");
 });
+
+it("opens the chosen symbol's settings right under it, not after the whole list", async () => {
+  const other = { ...infantry, basicId: "10031000121100", name: "Infantry Mechanized" };
+  server.use(http.get("/api/symbols", () => HttpResponse.json([infantry, other])));
+  renderWithProviders(<SymbolPicker onPlace={vi.fn()} />);
+  const user = userEvent.setup();
+  await user.type(screen.getByLabelText("Rechercher un symbole"), "infantry");
+  const first = await screen.findByRole("button", { name: /^Infantry\b(?! Mechanized)/ });
+  await user.click(first);
+  const settings = first.nextElementSibling!;
+  expect(settings).toHaveClass("symbol-choice");
+  expect(settings).toContainElement(screen.getByRole("button", { name: "Placer sur la carte" }));
+});

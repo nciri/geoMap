@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchSymbols, type SymbolInfo } from "../api/geomap";
 import { errorMessage } from "../api/client";
@@ -47,34 +47,41 @@ export function SymbolPicker({ onPlace }: { onPlace: (placed: PlacedSymbol) => v
         <details key={category} open className="symbol-group">
           <summary>{category}</summary>
           {symbols.map((s) => (
-            <button
-              key={s.basicId}
-              className={s.basicId === symbol?.basicId ? "selected" : undefined}
-              onClick={() => {
-                setSymbol(s);
-                setChoice(FRESH);
-              }}
-            >
-              {s.name} <small>{s.path}</small>
-            </button>
+            <Fragment key={s.basicId}>
+              <button
+                className={s.basicId === symbol?.basicId ? "selected" : undefined}
+                onClick={() => {
+                  setSymbol(s);
+                  setChoice(FRESH);
+                }}
+              >
+                {s.name} <small>{s.path}</small>
+              </button>
+              {/* The chosen symbol's settings open right under it. */}
+              {symbol && sidc && s.basicId === symbol.basicId && (
+                <div className="symbol-choice">
+                  <p>
+                    <strong>{symbol.name.trim()}</strong> · {GEOMETRY_LABELS[symbol.geometry]}
+                    {symbol.geometry !== "POINT" &&
+                      ` · ${symbol.minPoints} à ${symbol.maxPoints} points`}
+                  </p>
+                  <SymbolFields symbol={symbol} {...choice} onChange={setChoice} />
+                  {symbol.geometry === "POINT" && (
+                    <SymbolIcon
+                      sidc={sidc}
+                      modifiers={modifiers}
+                      alt={`Aperçu ${symbol.name.trim()}`}
+                    />
+                  )}
+                  <Button icon="symbol" onClick={() => onPlace({ symbol, sidc, modifiers })}>
+                    Placer sur la carte
+                  </Button>
+                </div>
+              )}
+            </Fragment>
           ))}
         </details>
       ))}
-      {symbol && sidc && (
-        <div className="symbol-choice">
-          <p>
-            <strong>{symbol.name.trim()}</strong> · {GEOMETRY_LABELS[symbol.geometry]}
-            {symbol.geometry !== "POINT" && ` · ${symbol.minPoints} à ${symbol.maxPoints} points`}
-          </p>
-          <SymbolFields symbol={symbol} {...choice} onChange={setChoice} />
-          {symbol.geometry === "POINT" && (
-            <SymbolIcon sidc={sidc} modifiers={modifiers} alt={`Aperçu ${symbol.name.trim()}`} />
-          )}
-          <Button icon="symbol" onClick={() => onPlace({ symbol, sidc, modifiers })}>
-            Placer sur la carte
-          </Button>
-        </div>
-      )}
     </section>
   );
 }
