@@ -6,6 +6,7 @@ import { Layout } from "./Layout";
 import { Home } from "./Home";
 import { DevicesPage } from "./admin/DevicesPage";
 import { BasemapsPage } from "./admin/BasemapsPage";
+import { Alert } from "./ui/components";
 
 // The editor pulls in the map libraries, which the missions list does not need.
 const MissionEditorPage = lazy(() =>
@@ -17,7 +18,11 @@ function EditorLoadError() {
   const { pathname, search } = useLocation();
   return (
     <>
-      <p role="alert">Impossible de charger l'éditeur.</p>
+      <Alert
+        severity="error"
+        title="Impossible de charger l'éditeur."
+        who={{ role: "Vous", step: "recharger la page" }}
+      />
       <a href={pathname + search}>Recharger</a>
     </>
   );
@@ -36,7 +41,7 @@ export const routes: RouteObject[] = [
         errorElement: <EditorLoadError />,
         element: (
           <RequireRole role="planificateur">
-            <Suspense fallback={<p>Chargement…</p>}>
+            <Suspense fallback={<Alert title="Chargement…" />}>
               <MissionEditorPage />
             </Suspense>
           </RequireRole>

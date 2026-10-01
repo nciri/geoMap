@@ -9,6 +9,8 @@ import type { LayerSpecification } from "maplibre-gl";
 import { absoluteTilesUrl, basemapStyle, isOverlay, type StackLayer } from "./style";
 import { visibility, type MapMode } from "./mapModes";
 import { CoordinateReadout } from "./CoordinateReadout";
+import { Alert, MapPanel } from "../ui/components";
+import type { ResolvedTheme } from "../ui/theme";
 
 export type LngLatBounds2 = [[number, number], [number, number]];
 
@@ -23,16 +25,36 @@ interface Props {
   vector: StackLayer | null;
   imagery: StackLayer[];
   mode: MapMode;
+  theme: ResolvedTheme;
   initialBounds?: LngLatBounds2 | null;
   onReady?: (map: maplibregl.Map) => void;
+  /** The map was removed (rebuild or unmount); `onReady` follows when a new one loads. */
+  onRemoved?: () => void;
   children?: ReactNode;
 }
 
-export function MapView({ vector, imagery, mode, initialBounds, onReady, children }: Props) {
+export function MapView({
+  vector,
+  imagery,
+  mode,
+  theme,
+  initialBounds,
+  onReady,
+  onRemoved,
+  children,
+}: Props) {
   const container = useRef<HTMLDivElement>(null);
   const onReadyRef = useRef(onReady);
+  const onRemovedRef = useRef(onRemoved);
   const initialBoundsRef = useRef(initialBounds);
   const stackRef = useRef({ vector, imagery });
+  // The view to restore when the map is rebuilt for a new theme.
+  const viewRef = useRef<{
+    center: [number, number];
+    zoom: number;
+    bearing: number;
+    pitch: number;
+  } | null>(null);
   const styleLayers = useRef<LayerSpecification[]>([]);
   const [map, setMap] = useState<maplibregl.Map | null>(null);
   const [cursor, setCursor] = useState<{ lng: number; lat: number } | null>(null);
@@ -44,6 +66,7 @@ export function MapView({ vector, imagery, mode, initialBounds, onReady, childre
 
   useEffect(() => {
     onReadyRef.current = onReady;
+    onRemovedRef.current = onRemoved;
     initialBoundsRef.current = initialBounds;
     stackRef.current = { vector, imagery };
   });
@@ -51,13 +74,13 @@ export function MapView({ vector, imagery, mode, initialBounds, onReady, childre
   useEffect(() => {
     let disposed = false;
     const { vector, imagery } = stackRef.current;
-    const style = basemapStyle({ vector, imagery });
+    const style = basemapStyle({ vector, imagery, theme });
     styleLayers.current = style.layers;
+    const view = viewRef.current;
     const created = new maplibregl.Map({
       container: container.current!,
       style,
-      center: [2.35, 46.6],
-      zoom: 5,
+      ...(view ?? { center: [2.35, 46.6], zoom: 5 }),
     });
     created.addControl(new maplibregl.NavigationControl(), "top-right");
     created.addControl(new maplibregl.ScaleControl({ unit: "metric" }), "bottom-left");
@@ -67,7 +90,8 @@ export function MapView({ vector, imagery, mode, initialBounds, onReady, childre
       onReadyRef.current?.(created);
       setMap(created);
     });
-    const bounds = initialBoundsRef.current;
+    // A rebuilt map keeps the user's view instead of framing the mission again.
+    const bounds = view ? null : initialBoundsRef.current;
     if (bounds) created.fitBounds(bounds, { padding: 60, maxZoom: 15, animate: false });
     // The shared Headers object carries the current token; pmtiles reads it on every request.
     const open = (layer: StackLayer) => {
@@ -81,7 +105,7 @@ export function MapView({ vector, imagery, mode, initialBounds, onReady, childre
       archives.push(archive);
       archive.getHeader().then(
         (header) => {
-          if (disposed || bounds) return;
+          if (disposed || bounds || view) return;
           created.fitBounds(
             [
               [header.minLon, header.minLat],
@@ -110,14 +134,24 @@ export function MapView({ vector, imagery, mode, initialBounds, onReady, childre
     return () => {
       disposed = true;
       setMap(null);
+      // The next map reads its archives again: these failures no longer describe it.
+      setBasemapError(null);
+      setImageryErrors([]);
+      viewRef.current = {
+        center: created.getCenter().toArray() as [number, number],
+        zoom: created.getZoom(),
+        bearing: created.getBearing(),
+        pitch: created.getPitch(),
+      };
       created.remove();
+      onRemovedRef.current?.();
       // pmtiles 4.5 has no removal method; its registry is a public Map keyed by source.
       for (const archive of archives) {
         const key = archive.source.getKey();
         if (protocol.tiles.get(key) === archive) protocol.tiles.delete(key);
       }
     };
-  }, [stackKey]);
+  }, [stackKey, theme]);
 
   useEffect(() => {
     if (!map) return;
@@ -128,18 +162,26 @@ export function MapView({ vector, imagery, mode, initialBounds, onReady, childre
   }, [map, mode]);
 
   return (
-    <div className="map-frame">
+    <div className="map-frame" data-map-theme={theme}>
       <div ref={container} className="map" />
       <div className="map-alerts">
         {basemapError && (
-          <p role="alert" title={basemapError}>
-            Fond de carte illisible : le serveur ne l'a pas fourni.
-          </p>
+          <MapPanel>
+            <Alert
+              severity="error"
+              title="Fond de carte illisible : le serveur ne l'a pas fourni."
+              hint={basemapError}
+            />
+          </MapPanel>
         )}
         {imageryErrors.map((error) => (
-          <p key={error.id} role="alert" title={error.cause}>
-            Imagerie illisible : {error.name}
-          </p>
+          <MapPanel key={error.id}>
+            <Alert
+              severity="error"
+              title={`Imagerie illisible : ${error.name}`}
+              hint={error.cause}
+            />
+          </MapPanel>
         ))}
       </div>
       {children}

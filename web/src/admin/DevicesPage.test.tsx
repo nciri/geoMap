@@ -56,8 +56,12 @@ it("revokes an enrolled device after confirmation", async () => {
   renderWithProviders(<DevicesPage />);
   const user = userEvent.setup();
   const row = (await screen.findByText("Tablette Alpha")).closest("tr")!;
+  expect(within(row).getByText("Enrôlé")).toHaveClass("al-status--ok");
   await user.click(within(row).getByRole("button", { name: "Révoquer" }));
   expect(revoked).not.toHaveBeenCalled();
+  expect(within(row).getByRole("button", { name: "Confirmer la révocation" })).toHaveClass(
+    "al-btn--irreversible",
+  );
   await user.click(within(row).getByRole("button", { name: "Confirmer la révocation" }));
   await waitFor(() => expect(revoked).toHaveBeenCalled());
 });

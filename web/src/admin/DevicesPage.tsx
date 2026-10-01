@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listDevices, registerDevice, revokeDevice } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { formatUtc } from "../format";
+import { Alert, Button, StatusBadge } from "../ui/components";
 
 export function DevicesPage() {
   const queryClient = useQueryClient();
@@ -39,8 +40,8 @@ export function DevicesPage() {
 
   return (
     <main className="page">
-      <h1>Terminaux</h1>
-      <p>Enregistrement manuel en attendant l'enrôlement par QR code.</p>
+      <h2 className="section-title">Enregistrer un terminal</h2>
+      <p className="muted">Enregistrement manuel en attendant l'enrôlement par QR code.</p>
       <form onSubmit={submit} className="admin-form">
         <label>
           Nom
@@ -54,11 +55,13 @@ export function DevicesPage() {
           Clé publique de chiffrement (PEM)
           <textarea value={pem} onChange={(e) => setPem(e.target.value)} required rows={4} />
         </label>
-        <button type="submit">Enregistrer le terminal</button>
+        <Button type="submit" variant="primary">
+          Enregistrer le terminal
+        </Button>
       </form>
-      {error && <p role="alert">{error}</p>}
-      {devices.error && <p role="alert">{errorMessage(devices.error)}</p>}
-      <table>
+      {error && <Alert severity="error" title={error} />}
+      {devices.error && <Alert severity="error" title={errorMessage(devices.error)} />}
+      <table className="al-table">
         <thead>
           <tr>
             <th>Nom</th>
@@ -72,14 +75,23 @@ export function DevicesPage() {
           {devices.data?.map((d) => (
             <tr key={d.id}>
               <td>{d.name}</td>
-              <td title={d.certSha256}>{d.certSha256.slice(0, 12)}…</td>
-              <td>{d.status === "ENROLLED" ? "Enrôlé" : "Révoqué"}</td>
+              <td className="al-mono" title={d.certSha256}>
+                {d.certSha256.slice(0, 12)}…
+              </td>
+              <td>
+                {d.status === "ENROLLED" ? (
+                  <StatusBadge state="ok">Enrôlé</StatusBadge>
+                ) : (
+                  <StatusBadge state="revoked">Révoqué</StatusBadge>
+                )}
+              </td>
               <td>{d.lastContact ? formatUtc(d.lastContact) : "jamais"}</td>
               <td>
                 {d.status === "ENROLLED" &&
                   (confirming === d.id ? (
                     <>
-                      <button
+                      <Button
+                        variant="irreversible"
                         onClick={() =>
                           void run(async () => {
                             await revokeDevice(d.id);
@@ -88,11 +100,13 @@ export function DevicesPage() {
                         }
                       >
                         Confirmer la révocation
-                      </button>
-                      <button onClick={() => setConfirming(null)}>Annuler</button>
+                      </Button>
+                      <Button variant="ghost" onClick={() => setConfirming(null)}>
+                        Annuler
+                      </Button>
                     </>
                   ) : (
-                    <button onClick={() => setConfirming(d.id)}>Révoquer</button>
+                    <Button onClick={() => setConfirming(d.id)}>Révoquer</Button>
                   ))}
               </td>
             </tr>

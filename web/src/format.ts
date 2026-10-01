@@ -1,10 +1,18 @@
 import type { MissionStatus } from "./api/geomap";
+import type { State } from "./ui/components";
 
 export const STATUS_LABELS: Record<MissionStatus, string> = {
   DRAFT: "Brouillon",
   PUBLISHED: "Publiée",
   WITHDRAWN: "Retirée",
 };
+
+const MISSION_STATES: Record<MissionStatus, State> = {
+  DRAFT: "blocked",
+  PUBLISHED: "ok",
+  WITHDRAWN: "revoked",
+};
+export const missionState = (status: MissionStatus): State => MISSION_STATES[status];
 
 // The UI works in UTC (Zulu time), like the orders it supports.
 export function formatUtc(iso: string | null): string {

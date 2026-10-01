@@ -1,9 +1,12 @@
 import { createRoot } from "react-dom/client";
 import { UserManager } from "oidc-client-ts";
+import "virtual:geomap-tokens.css";
+import "./ui/ui.css";
 import "./index.css";
 import { loadConfig } from "./auth/config";
 import { AuthProvider, CALLBACK_PATH } from "./auth/AuthProvider";
 import { App } from "./App";
+import { Alert } from "./ui/components";
 
 const root = createRoot(document.getElementById("root")!);
 
@@ -25,5 +28,14 @@ loadConfig().then(
       </AuthProvider>,
     );
   },
-  (error: unknown) => root.render(<p role="alert">{String(error)}</p>),
+  (error: unknown) =>
+    root.render(
+      <Alert
+        severity="error"
+        title="Configuration introuvable"
+        who={{ role: "Administrateur", step: "vérifier /config.json" }}
+      >
+        {String(error)}
+      </Alert>,
+    ),
 );

@@ -1,8 +1,9 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { geomapTokens } from "./src/ui/tokensPlugin";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), geomapTokens()],
   build: {
     // The lazy map chunk (maplibre-gl alone is ~800 kB) is served over the LAN when a mission opens.
     chunkSizeWarningLimit: 1300,

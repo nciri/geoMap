@@ -2,3 +2,4 @@ dist
 node_modules
 public/map-assets
 package-lock.json
+src/ui/tokens.json

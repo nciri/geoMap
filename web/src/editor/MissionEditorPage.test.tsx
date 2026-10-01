@@ -7,6 +7,8 @@ import { server } from "../test/server";
 import { renderWithProviders } from "../test/render";
 import { basemap, feature, mission } from "../test/fixtures";
 import { MissionEditorPage } from "./MissionEditorPage";
+import { renderHook } from "@testing-library/react";
+import { useTheme } from "../ui/theme";
 
 const mapMounts = vi.hoisted(() => ({ count: 0 }));
 vi.mock("../map/MapView", () => ({
@@ -14,6 +16,7 @@ vi.mock("../map/MapView", () => ({
     vector: { id: string } | null;
     imagery: { id: string }[];
     mode: string;
+    theme: string;
     initialBounds?: unknown;
     children?: ReactNode;
   }) => {
@@ -26,6 +29,7 @@ vi.mock("../map/MapView", () => ({
         data-basemap={props.vector?.id ?? ""}
         data-imagery={props.imagery.map((i) => i.id).join(",")}
         data-mode={props.mode}
+        data-theme={props.theme}
         data-bounds={JSON.stringify(props.initialBounds ?? null)}
       >
         {props.children}
@@ -108,7 +112,7 @@ it("opens the mission on its basemap, framed on its objects", async () => {
 it("still opens a mission without a basemap and says what to do", async () => {
   serve(mission({ layers: [] }), []);
   renderWithProviders(<MissionEditorPage />, route);
-  expect(await screen.findByRole("status")).toHaveTextContent("Aucun fond de carte");
+  expect((await screen.findByText(/Aucun fond de carte/)).closest("[role=status]")).not.toBeNull();
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "");
 });
 
@@ -123,9 +127,9 @@ it("waits for basemaps to load before opening the map, mounting it once with the
   );
   renderWithProviders(<MissionEditorPage />, route);
   // While basemaps are still loading, the page must not show the wrong "no basemap" status.
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Aucun fond de carte/)).not.toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "Op Nord" })).toBeInTheDocument();
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Aucun fond de carte/)).not.toBeInTheDocument();
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "zone-nord");
   expect(mapMounts.count).toBe(1);
 });
@@ -174,9 +178,12 @@ it("saves mission settings", async () => {
   );
   renderWithProviders(<MissionEditorPage />, route);
   const user = userEvent.setup();
-  await user.click(await screen.findByText("Paramètres"));
+  const settings = await screen.findByRole("button", { name: "Paramètres" });
+  expect(settings).toHaveAttribute("aria-expanded", "false");
+  await user.click(settings);
+  expect(settings).toHaveAttribute("aria-expanded", "true");
   await screen.findByRole("option", { name: "Zone Nord" });
-  const name = screen.getByLabelText("Nom");
+  const name = screen.getByRole("textbox", { name: "Nom" });
   await user.clear(name);
   await user.type(name, "Op Nord 2");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));
@@ -232,4 +239,58 @@ it("says so when the reshaped object was deleted meanwhile", async () => {
     "Cet objet n'existe plus : il a été supprimé entre-temps.",
   );
   expect(drawing.stopEditing).toHaveBeenCalled();
+});
+
+it("hands the theme to the map and keeps the editor working when it changes", async () => {
+  serve();
+  renderWithProviders(<MissionEditorPage />, route);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: /PC avancé/ }));
+  const { result } = renderHook(() => useTheme());
+  act(() => result.current.setPreference("dark"));
+  expect(screen.getByTestId("map")).toHaveAttribute("data-theme", "dark");
+  act(() => result.current.setPreference("light"));
+  expect(screen.getByTestId("map")).toHaveAttribute("data-theme", "light");
+  expect(screen.queryByRole("alert")).toBeNull();
+  expect(screen.getByRole("heading", { name: /Objets/ })).toBeInTheDocument();
+});
+
+it("groups the panel in tabs and keeps publishing within reach from each of them", async () => {
+  serve();
+  renderWithProviders(<MissionEditorPage />, route);
+  const user = userEvent.setup();
+  expect(await screen.findByRole("heading", { level: 2, name: "Op Nord" })).toBeInTheDocument();
+  expect(screen.getByText(/Valide jusqu'au 2026-10-02 06:00Z/)).toBeInTheDocument();
+  const tabs = screen.getAllByRole("tab");
+  expect(tabs.map((t) => t.textContent)).toEqual(["Objets", "Symboles", "Diffusion"]);
+  for (const tab of tabs) expect(tab.querySelector("svg.al-icon")).not.toBeNull();
+  expect(screen.getByRole("tab", { name: "Objets" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByRole("toolbar", { name: "Dessin" })).toBeVisible();
+  expect(screen.queryByRole("heading", { name: "Terminaux affectés" })).toBeNull();
+  expect(await screen.findByRole("button", { name: /Publier la version 1/ })).toBeVisible();
+
+  await user.click(screen.getByRole("tab", { name: "Symboles" }));
+  expect(screen.getByLabelText("Rechercher un symbole")).toBeVisible();
+  expect(screen.getByRole("button", { name: /Publier la version 1/ })).toBeVisible();
+
+  await user.click(screen.getByRole("tab", { name: "Diffusion" }));
+  expect(screen.getByRole("heading", { name: "Terminaux affectés" })).toBeVisible();
+  expect(screen.getByRole("button", { name: /Publier la version 1/ })).toBeVisible();
+});
+
+it("opens the Diffusion tab from the blocking summary", async () => {
+  serve();
+  server.use(
+    http.get(`/api/missions/${id}/validation`, () =>
+      HttpResponse.json({
+        errors: [{ code: "NO_RECIPIENT", message: "no device", featureId: null }],
+        warnings: [],
+      }),
+    ),
+  );
+  renderWithProviders(<MissionEditorPage />, route);
+  const user = userEvent.setup();
+  await user.click(await screen.findByRole("button", { name: "1 erreur bloquante" }));
+  expect(screen.getByRole("tab", { name: "Diffusion" })).toHaveAttribute("aria-selected", "true");
+  expect(screen.getByText("Aucun terminal enrôlé affecté")).toBeVisible();
 });
