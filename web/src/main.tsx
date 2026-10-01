@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { UserManager } from "oidc-client-ts";
+import "virtual:geomap-tokens.css";
 import "./index.css";
 import { loadConfig } from "./auth/config";
 import { AuthProvider, CALLBACK_PATH } from "./auth/AuthProvider";
