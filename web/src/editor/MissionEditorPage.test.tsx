@@ -108,7 +108,7 @@ it("opens the mission on its basemap, framed on its objects", async () => {
 it("still opens a mission without a basemap and says what to do", async () => {
   serve(mission({ layers: [] }), []);
   renderWithProviders(<MissionEditorPage />, route);
-  expect(await screen.findByRole("status")).toHaveTextContent("Aucun fond de carte");
+  expect((await screen.findByText(/Aucun fond de carte/)).closest("[role=status]")).not.toBeNull();
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "");
 });
 
@@ -123,9 +123,9 @@ it("waits for basemaps to load before opening the map, mounting it once with the
   );
   renderWithProviders(<MissionEditorPage />, route);
   // While basemaps are still loading, the page must not show the wrong "no basemap" status.
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Aucun fond de carte/)).not.toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "Op Nord" })).toBeInTheDocument();
-  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.queryByText(/Aucun fond de carte/)).not.toBeInTheDocument();
   expect(screen.getByTestId("map")).toHaveAttribute("data-basemap", "zone-nord");
   expect(mapMounts.count).toBe(1);
 });

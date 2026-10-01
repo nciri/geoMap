@@ -5,6 +5,7 @@ import { errorMessage } from "../api/client";
 import { buildSidc, filledModifiers, GEOMETRY_LABELS, groupByCategory, hasEchelon } from "./sidc";
 import { SymbolFields, type SymbolChoice } from "./SymbolFields";
 import { SymbolIcon } from "./SymbolIcon";
+import { Alert, Button } from "../ui/components";
 
 export interface PlacedSymbol {
   symbol: SymbolInfo;
@@ -34,7 +35,7 @@ export function SymbolPicker({ onPlace }: { onPlace: (placed: PlacedSymbol) => v
         Rechercher un symbole
         <input value={query} onChange={(e) => setQuery(e.target.value)} />
       </label>
-      {results.error && <p role="alert">{errorMessage(results.error)}</p>}
+      {results.error && <Alert severity="error" title={errorMessage(results.error)} />}
       {groupByCategory(results.data ?? []).map(([category, symbols]) => (
         <div key={category}>
           <h3>{category}</h3>
@@ -62,7 +63,9 @@ export function SymbolPicker({ onPlace }: { onPlace: (placed: PlacedSymbol) => v
           {symbol.geometry === "POINT" && (
             <SymbolIcon sidc={sidc} modifiers={modifiers} alt={`Aperçu ${symbol.name.trim()}`} />
           )}
-          <button onClick={() => onPlace({ symbol, sidc, modifiers })}>Placer sur la carte</button>
+          <Button icon="symbol" onClick={() => onPlace({ symbol, sidc, modifiers })}>
+            Placer sur la carte
+          </Button>
         </div>
       )}
     </section>

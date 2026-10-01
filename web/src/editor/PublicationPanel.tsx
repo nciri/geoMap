@@ -11,6 +11,7 @@ import {
 } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { formatUtc } from "../format";
+import { Alert, Button, StatusBadge } from "../ui/components";
 import { saveFile } from "../files";
 
 export const VALIDATION_LABELS: Record<string, string> = {
@@ -76,10 +77,15 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
     }
   }
 
-  const issue = (i: ValidationIssue, index: number) => {
+  const issue = (blocking: boolean) => (i: ValidationIssue, index: number) => {
     const label = VALIDATION_LABELS[i.code] ?? i.message;
     return (
       <li key={`${i.code}-${index}`} title={i.message}>
+        {blocking ? (
+          <StatusBadge state="error">Bloquant</StatusBadge>
+        ) : (
+          <StatusBadge state="degraded">Avertissement</StatusBadge>
+        )}{" "}
         {i.featureId ? (
           <button className="link" onClick={() => onSelectFeature(i.featureId!)}>
             {label}
@@ -94,25 +100,27 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
   return (
     <section className="publication">
       <h2>Publication</h2>
-      {validation.error && <p role="alert">{errorMessage(validation.error)}</p>}
+      {validation.error && <Alert severity="error" title={errorMessage(validation.error)} />}
       {validation.data &&
         (validation.data.errors.length === 0 ? (
           <p>Aucune erreur bloquante.</p>
         ) : (
           <ul aria-label="Erreurs bloquantes" className="errors">
-            {validation.data.errors.map(issue)}
+            {validation.data.errors.map(issue(true))}
           </ul>
         ))}
       {validation.data && validation.data.warnings.length > 0 && (
         <ul aria-label="Avertissements" className="warnings">
-          {validation.data.warnings.map(issue)}
+          {validation.data.warnings.map(issue(false))}
         </ul>
       )}
       {withdrawn ? (
         <p>Mission retirée : les terminaux la suppriment au prochain contact.</p>
       ) : (
         <div className="actions">
-          <button
+          <Button
+            variant="primary"
+            icon="publish"
             disabled={busy || blocked}
             onClick={() =>
               void run(async () => {
@@ -122,9 +130,10 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
             }
           >
             Publier la version {nextVersion}
-          </button>
+          </Button>
           {published && (
-            <button
+            <Button
+              icon="download"
               disabled={busy}
               onClick={() =>
                 void run(async () => {
@@ -135,12 +144,13 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
               }
             >
               Exporter pour carte SD
-            </button>
+            </Button>
           )}
           {published &&
             (confirmWithdraw ? (
               <>
-                <button
+                <Button
+                  variant="irreversible"
                   disabled={busy}
                   onClick={() =>
                     void run(async () => {
@@ -151,17 +161,19 @@ export function PublicationPanel({ mission, revision, onSelectFeature }: Props) 
                   }
                 >
                   Confirmer le retrait
-                </button>
-                <button onClick={() => setConfirmWithdraw(false)}>Annuler</button>
+                </Button>
+                <Button variant="ghost" onClick={() => setConfirmWithdraw(false)}>
+                  Annuler
+                </Button>
               </>
             ) : (
-              <button onClick={() => setConfirmWithdraw(true)}>Retirer la mission</button>
+              <Button onClick={() => setConfirmWithdraw(true)}>Retirer la mission</Button>
             ))}
         </div>
       )}
-      {notice && <p role="status">{notice}</p>}
-      {error && <p role="alert">{error}</p>}
-      {versions.error && <p role="alert">{errorMessage(versions.error)}</p>}
+      {notice && <Alert title={notice} />}
+      {error && <Alert severity="error" title={error} />}
+      {versions.error && <Alert severity="error" title={errorMessage(versions.error)} />}
       {published && (
         <ul aria-label="Versions publiées">
           {[...versions.data!]

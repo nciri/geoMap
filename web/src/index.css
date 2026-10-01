@@ -6,10 +6,62 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  font-family: system-ui, sans-serif;
 }
-[role="alert"] {
-  color: #d20f39;
+a {
+  color: var(--accent-text);
+}
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+h1 {
+  font-size: 18px;
+  line-height: 24px;
+}
+h2,
+.section-title {
+  font-size: 15px;
+  line-height: 20px;
+}
+input,
+select,
+textarea {
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-200);
+  color: var(--text);
+  font: inherit;
+}
+textarea {
+  padding: var(--space-2);
+}
+label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+fieldset {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+legend {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.muted {
+  color: var(--text-muted);
 }
 .shell {
   display: flex;
@@ -26,27 +78,144 @@ body,
   font: 600 18px/24px var(--font-display);
 }
 .page {
-  padding: 1rem;
-  overflow: auto;
-}
-.mission-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  align-items: end;
-}
-.mission-form label {
   display: flex;
   flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+  overflow: auto;
 }
-table {
-  border-collapse: collapse;
-  margin-top: 1rem;
+.mission-form,
+.admin-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: end;
+  padding: var(--space-4);
+  background: var(--bg-100);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
 }
-th,
-td {
-  padding: 0.25rem 0.75rem;
+.admin-form {
+  flex-direction: column;
+  align-items: stretch;
+  max-width: 40rem;
+}
+.imagery ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0 0 var(--space-2);
+  padding: 0;
+  list-style: none;
+}
+.editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 22rem;
+  padding: var(--space-4);
+  overflow: auto;
+  background: var(--bg-100);
+  border-right: 1px solid var(--line);
+}
+.panel details > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.panel .mission-form {
+  padding: var(--space-2) 0;
+  border: none;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+.toolbar [aria-pressed="true"] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.features ul,
+.publication ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.features li.selected .feature-item {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.feature-item {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
   text-align: left;
+  cursor: pointer;
+}
+.feature-item:hover {
+  background: var(--bg-300);
+}
+.feature-details,
+.symbol-fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+button.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.symbol-picker button,
+.symbol-picker small {
+  display: block;
+  text-align: left;
+}
+.symbol-picker button:not(.al-btn) {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+.symbol-picker button:not(.al-btn):hover {
+  background: var(--bg-300);
+}
+.symbol-picker .selected {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+.symbol-picker small {
+  color: var(--text-muted);
+}
+.symbol-icon {
+  max-width: 64px;
 }
 .map-frame {
   position: relative;
@@ -65,8 +234,8 @@ td {
   display: flex;
   gap: 1rem;
   padding: 0.25rem 0.5rem;
-  background: rgb(255 255 255 / 85%);
-  font-family: ui-monospace, monospace;
+  background: var(--bg-100);
+  font-family: var(--font-mono);
   font-size: 0.85rem;
 }
 .map-alerts {
@@ -79,95 +248,7 @@ td {
 .map-alerts p {
   margin: 0 0 0.25rem;
   padding: 0.25rem 0.75rem;
-  background: #ffffff;
-}
-.editor {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-.panel {
-  width: 22rem;
-  padding: 0.75rem;
-  overflow: auto;
-  border-right: 1px solid #ccd0da;
-}
-.features ul {
-  list-style: none;
-  padding: 0;
-}
-.features li.selected .feature-item {
-  font-weight: bold;
-}
-.feature-item {
-  background: none;
-  border: none;
-  cursor: pointer;
-  text-align: left;
-}
-.badge {
-  color: #df8e1d;
-}
-.feature-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.feature-details label {
-  display: flex;
-  flex-direction: column;
-}
-.toolbar {
-  display: flex;
-  gap: 0.25rem;
-  margin: 0.5rem 0;
-}
-.toolbar [aria-pressed="true"] {
-  font-weight: bold;
-}
-.symbol-picker button,
-.symbol-picker small {
-  display: block;
-  text-align: left;
-}
-.symbol-picker .selected {
-  font-weight: bold;
-}
-.symbol-fields label {
-  display: flex;
-  flex-direction: column;
-}
-.symbol-icon {
-  max-width: 64px;
-}
-.publication .errors {
-  color: #d20f39;
-}
-.publication .warnings {
-  color: #df8e1d;
-}
-.publication .actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-}
-button.link {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-}
-.admin-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  max-width: 40rem;
-}
-.admin-form label {
-  display: flex;
-  flex-direction: column;
+  background: var(--bg-100);
 }
 .mode-switch {
   position: absolute;

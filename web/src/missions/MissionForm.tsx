@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { listBasemaps, type Mission, type MissionInput } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { attributionText, fromUtcInput, toUtcInput } from "../format";
+import { Alert, Button } from "../ui/components";
 
 interface Props {
   initial?: Mission;
@@ -88,19 +89,19 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
           {imagery.map((id, index) => (
             <li key={id}>
               {nameOf(id)} — {attributionOf(id)}
-              <button type="button" disabled={index === 0} onClick={() => move(index, -1)}>
+              <Button variant="ghost" disabled={index === 0} onClick={() => move(index, -1)}>
                 Monter {nameOf(id)}
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
                 disabled={index === imagery.length - 1}
                 onClick={() => move(index, 1)}
               >
                 Descendre {nameOf(id)}
-              </button>
-              <button type="button" onClick={() => remove(index)}>
+              </Button>
+              <Button variant="ghost" onClick={() => remove(index)}>
                 Retirer {nameOf(id)}
-              </button>
+              </Button>
             </li>
           ))}
         </ul>
@@ -132,11 +133,12 @@ export function MissionForm({ initial, submitLabel, onSubmit }: Props) {
           onChange={(e) => setValidUntil(e.target.value)}
         />
       </label>
-      <button type="submit" disabled={busy}>
+      {/* Creating is the missions page's one action; in the editor, publishing is. */}
+      <Button type="submit" variant={initial ? "secondary" : "primary"} disabled={busy}>
         {submitLabel}
-      </button>
-      {basemaps.error && <p role="alert">{errorMessage(basemaps.error)}</p>}
-      {error && <p role="alert">{error}</p>}
+      </Button>
+      {basemaps.error && <Alert severity="error" title={errorMessage(basemaps.error)} />}
+      {error && <Alert severity="error" title={error} />}
     </form>
   );
 }

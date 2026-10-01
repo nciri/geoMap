@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSymbolIcon } from "../api/geomap";
 import { errorMessage } from "../api/client";
+import { Alert } from "../ui/components";
 
 export function SymbolIcon({
   sidc,
@@ -25,6 +26,6 @@ export function SymbolIcon({
     };
   }, [url]);
 
-  if (icon.error) return <p role="alert">{errorMessage(icon.error)}</p>;
+  if (icon.error) return <Alert severity="error" title={errorMessage(icon.error)} />;
   return url ? <img className="symbol-icon" src={url} alt={alt} /> : null;
 }

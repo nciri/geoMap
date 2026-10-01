@@ -1,11 +1,12 @@
 import type { DrawMode } from "../map/drawing";
 import type { ToolMode } from "../map/useDrawing";
+import { Button, type IconName } from "../ui/components";
 
-const TOOLS: { mode: DrawMode; label: string }[] = [
-  { mode: "point", label: "Point" },
-  { mode: "linestring", label: "Ligne" },
-  { mode: "polygon", label: "Zone" },
-  { mode: "circle", label: "Cercle" },
+const TOOLS: { mode: DrawMode; label: string; icon: IconName }[] = [
+  { mode: "point", label: "Point", icon: "draw-point" },
+  { mode: "linestring", label: "Ligne", icon: "draw-line" },
+  { mode: "polygon", label: "Zone", icon: "draw-polygon" },
+  { mode: "circle", label: "Cercle", icon: "crosshair" },
 ];
 
 export function DrawToolbar({
@@ -20,18 +21,19 @@ export function DrawToolbar({
   return (
     <div className="toolbar" role="toolbar" aria-label="Dessin">
       {TOOLS.map((tool) => (
-        <button
+        <Button
           key={tool.mode}
+          icon={tool.icon}
           aria-pressed={mode === tool.mode}
           disabled={disabled}
           onClick={() => onMode(tool.mode)}
         >
           {tool.label}
-        </button>
+        </Button>
       ))}
-      <button disabled={disabled} onClick={() => onMode("static")}>
+      <Button icon="check" disabled={disabled} onClick={() => onMode("static")}>
         Terminer
-      </button>
+      </Button>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { assignDevices, listAssignedDevices, listDevices } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { formatUtc } from "../format";
+import { Alert, Button } from "../ui/components";
 
 export function AssignmentPanel({ missionId, disabled }: { missionId: string; disabled: boolean }) {
   const queryClient = useQueryClient();
@@ -58,7 +59,7 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
   return (
     <section className="assignment">
       <h2>Terminaux affectés</h2>
-      {loadError && <p role="alert">{errorMessage(loadError)}</p>}
+      {loadError && <Alert severity="error" title={errorMessage(loadError)} />}
       {devices.data?.length === 0 && (
         <p>Aucun terminal enregistré : demandez à un administrateur.</p>
       )}
@@ -83,14 +84,14 @@ export function AssignmentPanel({ missionId, disabled }: { missionId: string; di
           );
         })}
       </ul>
-      <button
+      <Button
         disabled={busy || disabled || !devices.data || !assigned.data}
         onClick={() => void save()}
       >
         Enregistrer l'affectation
-      </button>
-      {notice && <p role="status">{notice}</p>}
-      {error && <p role="alert">{error}</p>}
+      </Button>
+      {notice && <Alert title={notice} />}
+      {error && <Alert severity="error" title={error} />}
     </section>
   );
 }

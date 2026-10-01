@@ -13,6 +13,7 @@ import { DEFAULT_COLOR, isCircle } from "../map/missionLayer";
 import { filledModifiers, hasEchelon, parseSidc, withIdentityAndEchelon } from "../symbols/sidc";
 import { SymbolFields, type SymbolChoice } from "../symbols/SymbolFields";
 import { SymbolIcon } from "../symbols/SymbolIcon";
+import { Alert, Button, StatusBadge } from "../ui/components";
 
 interface Props {
   missionId: string;
@@ -49,7 +50,7 @@ export function FeaturePanel({ missionId, features, selectedId, onSelect }: Prop
   return (
     <section className="features">
       <h2>Objets ({visible.length})</h2>
-      {error && <p role="alert">{error}</p>}
+      {error && <Alert severity="error" title={error} />}
       <ul>
         {visible.map((f) => {
           const name = f.name || "Sans nom";
@@ -57,22 +58,24 @@ export function FeaturePanel({ missionId, features, selectedId, onSelect }: Prop
             <li key={f.id} className={f.id === selectedId ? "selected" : undefined}>
               <button className="feature-item" onClick={() => onSelect(f)}>
                 <span>{name}</span> <small>{typeLabel(f)}</small>
-                {isPending(f) && <span className="badge"> Suggestion IA</span>}
+                {isPending(f) && <StatusBadge state="pending">Suggestion IA</StatusBadge>}
               </button>
               {isPending(f) && (
                 <span className="decision">
-                  <button
+                  <Button
+                    variant="ghost"
                     aria-label={`Accepter ${name}`}
                     onClick={() => void run(() => acceptFeature(missionId, f.id))}
                   >
                     Accepter
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     aria-label={`Rejeter ${name}`}
                     onClick={() => void run(() => rejectFeature(missionId, f.id))}
                   >
                     Rejeter
-                  </button>
+                  </Button>
                 </span>
               )}
             </li>
@@ -198,7 +201,7 @@ function FeatureDetails({
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
       )}
-      {sidc && symbol.error && <p role="alert">{errorMessage(symbol.error)}</p>}
+      {sidc && symbol.error && <Alert severity="error" title={errorMessage(symbol.error)} />}
       {info && rebuilt && (
         <>
           <SymbolFields symbol={info} {...choice} onChange={setChoice} />
@@ -224,22 +227,20 @@ function FeatureDetails({
           />
         </label>
       )}
-      <button type="submit" disabled={saving}>
+      <Button type="submit" disabled={saving}>
         Enregistrer l'objet
-      </button>
+      </Button>
       {confirming ? (
         <>
-          <button type="button" onClick={() => void onDelete()}>
+          <Button variant="irreversible" onClick={() => void onDelete()}>
             Confirmer la suppression
-          </button>
-          <button type="button" onClick={() => setConfirming(false)}>
+          </Button>
+          <Button variant="ghost" onClick={() => setConfirming(false)}>
             Annuler
-          </button>
+          </Button>
         </>
       ) : (
-        <button type="button" onClick={() => setConfirming(true)}>
-          Supprimer l'objet
-        </button>
+        <Button onClick={() => setConfirming(true)}>Supprimer l'objet</Button>
       )}
     </form>
   );

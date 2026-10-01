@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { listBasemaps, uploadBasemap, type BasemapKind } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { attributionText, formatUtc } from "../format";
+import { Alert, Button, StatusBadge } from "../ui/components";
 
 const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} Mo`;
 const KIND_LABELS: Record<BasemapKind, string> = {
@@ -48,8 +49,8 @@ export function BasemapsPage() {
 
   return (
     <main className="page">
-      <h1>Fonds de carte</h1>
-      <p>
+      <h2 className="section-title">Importer un fond de carte</h2>
+      <p className="muted">
         Import d'un fichier PMTiles déjà généré ; la génération depuis un extrait OSM arrive avec le
         déploiement.
       </p>
@@ -78,15 +79,15 @@ export function BasemapsPage() {
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
         </label>
-        <button type="submit" disabled={progress !== null}>
+        <Button type="submit" variant="primary" icon="install" disabled={progress !== null}>
           Importer
-        </button>
+        </Button>
         {progress !== null && <progress value={progress} max={1} aria-label="Import en cours" />}
       </form>
-      {notice && <p role="status">{notice}</p>}
-      {error && <p role="alert">{error}</p>}
-      {basemaps.error && <p role="alert">{errorMessage(basemaps.error)}</p>}
-      <table>
+      {notice && <Alert title={notice} />}
+      {error && <Alert severity="error" title={error} />}
+      {basemaps.error && <Alert severity="error" title={errorMessage(basemaps.error)} />}
+      <table className="al-table">
         <thead>
           <tr>
             <th>Nom</th>
@@ -101,10 +102,12 @@ export function BasemapsPage() {
           {basemaps.data?.map((b) => (
             <tr key={b.id}>
               <td>{b.name}</td>
-              <td>{b.id}</td>
-              <td>{KIND_LABELS[b.kind]}</td>
+              <td className="al-mono">{b.id}</td>
+              <td>
+                <StatusBadge state="blocked">{KIND_LABELS[b.kind]}</StatusBadge>
+              </td>
               <td>{attributionText(b.attribution)}</td>
-              <td>{megabytes(b.sizeBytes)}</td>
+              <td className="al-mono">{megabytes(b.sizeBytes)}</td>
               <td>
                 {formatUtc(b.createdAt)} par {b.createdBy}
               </td>

@@ -19,7 +19,7 @@ it("lists missions with their status and UTC dates", async () => {
   serve();
   renderWithProviders(<MissionsPage />);
   const row = await rowOf("Op Nord");
-  expect(within(row).getByText("Brouillon")).toBeInTheDocument();
+  expect(within(row).getByText("Brouillon")).toHaveClass("al-status", "al-status--blocked");
   expect(within(row).getByText("2026-10-02 06:00Z")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Op Nord" })).toHaveAttribute(
     "href",

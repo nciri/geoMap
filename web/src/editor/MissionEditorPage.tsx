@@ -13,7 +13,8 @@ import {
   type Feature,
 } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { STATUS_LABELS } from "../format";
+import { missionState, STATUS_LABELS } from "../format";
+import { Alert, StatusBadge } from "../ui/components";
 import { MissionForm } from "../missions/MissionForm";
 import { MapView } from "../map/MapView";
 import { ModeSwitch } from "../map/ModeSwitch";
@@ -137,9 +138,14 @@ export function MissionEditorPage() {
   }, [map, features.data, editingId]);
 
   if (mission.error || features.error || basemaps.error) {
-    return <p role="alert">{errorMessage(mission.error ?? features.error ?? basemaps.error)}</p>;
+    return (
+      <Alert
+        severity="error"
+        title={errorMessage(mission.error ?? features.error ?? basemaps.error)}
+      />
+    );
   }
-  if (!mission.data || !features.data || !basemaps.data) return <p>Chargement…</p>;
+  if (!mission.data || !features.data || !basemaps.data) return <Alert title="Chargement…" />;
   const current = mission.data;
   const basemapOf = (layerId: string) => basemaps.data.find((b) => b.id === layerId);
   const toLayer = ({ id, name, attribution }: StackLayer): StackLayer => ({
@@ -159,9 +165,16 @@ export function MissionEditorPage() {
     <div className="editor">
       <aside className="panel">
         <h1>{current.name}</h1>
-        <p>{STATUS_LABELS[current.status]}</p>
+        <p>
+          <StatusBadge state={missionState(current.status)}>
+            {STATUS_LABELS[current.status]}
+          </StatusBadge>
+        </p>
         {!vector && (
-          <p role="status">Aucun fond de carte : choisissez-en un dans les paramètres.</p>
+          <Alert
+            severity="degraded"
+            title="Aucun fond de carte : choisissez-en un dans les paramètres."
+          />
         )}
         <details>
           <summary>Paramètres</summary>
@@ -200,8 +213,8 @@ export function MissionEditorPage() {
             </p>
           )}
         </details>
-        {drawError && <p role="alert">{drawError}</p>}
-        {symbols.error && <p role="alert">{symbols.error}</p>}
+        {drawError && <Alert severity="error" title={drawError} />}
+        {symbols.error && <Alert severity="error" title={symbols.error} />}
         <FeaturePanel
           missionId={missionId}
           features={features.data}
