@@ -1,8 +1,8 @@
 import { useId, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from "react";
-import { ICONS, LOGO_PATHS, type IconName } from "./icons";
+import { ALL_ICONS, LOGO_PATHS, type IconName } from "./icons";
 
 export type { IconName };
-export const iconNames = Object.keys(ICONS) as IconName[];
+export const iconNames = Object.keys(ALL_ICONS) as IconName[];
 const cx = (...names: (string | false | undefined)[]) => names.filter(Boolean).join(" ");
 
 export function Icon({
@@ -31,7 +31,7 @@ export function Icon({
       aria-hidden={title ? undefined : true}
       aria-label={title}
       // Static markup from ICONS only; no user data reaches it.
-      dangerouslySetInnerHTML={{ __html: ICONS[name] }}
+      dangerouslySetInnerHTML={{ __html: ALL_ICONS[name] }}
     />
   );
 }
@@ -156,6 +156,21 @@ export function Button({
       {icon && <Icon name={icon} size={16} />}
       {children}
     </button>
+  );
+}
+
+// An icon-only action: `label` names it for assistive technology, `tooltip` for the pointer.
+export function IconButton({
+  icon,
+  label,
+  tooltip,
+  variant = "ghost",
+  ...rest
+}: Omit<ButtonProps, "children" | "icon"> & { icon: IconName; label: string; tooltip: string }) {
+  return (
+    <Button variant={variant} className="al-btn--icon" aria-label={label} title={tooltip} {...rest}>
+      <Icon name={icon} size={16} />
+    </Button>
   );
 }
 

@@ -180,7 +180,7 @@ it("saves mission settings", async () => {
   const user = userEvent.setup();
   await user.click(await screen.findByText("Paramètres"));
   await screen.findByRole("option", { name: "Zone Nord" });
-  const name = screen.getByLabelText("Nom");
+  const name = screen.getByRole("textbox", { name: "Nom" });
   await user.clear(name);
   await user.type(name, "Op Nord 2");
   await user.click(screen.getByRole("button", { name: "Enregistrer" }));

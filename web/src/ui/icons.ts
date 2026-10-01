@@ -90,7 +90,20 @@ export const ICONS = {
     '<rect x="3.5" y="5.5" width="13" height="9" rx="0.5"/><path d="m3.5 5.5 13 9M16.5 5.5l-13 9"/>',
   measure: '<path d="m3 14 11-11 3 3-11 11z"/><path d="m6 11 1.5 1.5M8.5 8.5 10 10M11 6l1.5 1.5"/>',
 } as const;
-export type IconName = keyof typeof ICONS;
+
+// geoMap additions drawn on the same grid, to report back to the design system.
+export const GEOMAP_ICONS = {
+  sun: '<circle cx="10" cy="10" r="3.2"/><path d="M10 2.5v2M10 15.5v2M2.5 10h2M15.5 10h2M4.7 4.7l1.4 1.4M13.9 13.9l1.4 1.4M4.7 15.3l1.4-1.4M13.9 6.1l1.4-1.4"/>',
+  moon: '<path d="M15.5 12.5A6.5 6.5 0 0 1 7.5 4.5a6.5 6.5 0 1 0 8 8z"/>',
+  display: '<rect x="2.5" y="3.5" width="15" height="10" rx="1"/><path d="M7 16.5h6M10 13.5v3"/>',
+  logout: '<path d="M8 3.5H4.5v13H8"/><path d="M12 6.5 15.5 10 12 13.5M15.5 10H8"/>',
+  trash:
+    '<path d="M3.5 5.5h13M8 5.5v-2h4v2"/><path d="m5 5.5.8 11h8.4l.8-11"/><path d="M8.5 8.5v5M11.5 8.5v5"/>',
+  "chevron-up": '<path d="m5 12 5-5 5 5"/>',
+} as const;
+
+export const ALL_ICONS = { ...ICONS, ...GEOMAP_ICONS };
+export type IconName = keyof typeof ALL_ICONS;
 
 // The ALIAS mark (redrawn from the brand board, pending validation against the official artwork).
 export const LOGO_PATHS = {

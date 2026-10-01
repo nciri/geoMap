@@ -4,7 +4,7 @@ import { formatLatLon, formatMgrs } from "./coordinates";
 export function CoordinateReadout({ position }: { position: { lng: number; lat: number } | null }) {
   return (
     <MapPanel className="map-coords">
-      <div className="al-coords" aria-live="polite">
+      <div className="al-coords">
         {position ? (
           <>
             <span>

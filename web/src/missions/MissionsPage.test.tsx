@@ -39,7 +39,7 @@ it("creates a mission with a basemap and a UTC expiry", async () => {
   );
   renderWithProviders(<MissionsPage />);
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText("Nom"), "  Op Nord ");
+  await user.type(screen.getByRole("textbox", { name: "Nom" }), "  Op Nord ");
   await screen.findByRole("option", { name: "Zone Nord" });
   await user.selectOptions(screen.getByLabelText("Fond de carte"), "zone-nord");
   await user.type(screen.getByLabelText("Valide jusqu'au (UTC)"), "2026-10-02T06:00");
@@ -53,7 +53,7 @@ it("creates a mission with a basemap and a UTC expiry", async () => {
     }),
   );
   expect(await screen.findByRole("link", { name: "Op Nord" })).toBeInTheDocument();
-  expect(screen.getByLabelText("Nom")).toHaveValue("");
+  expect(screen.getByRole("textbox", { name: "Nom" })).toHaveValue("");
   expect(screen.getByLabelText("Fond de carte")).toHaveDisplayValue("— aucun —");
   expect(screen.getByLabelText("Valide jusqu'au (UTC)")).toHaveValue("");
 });
@@ -71,8 +71,12 @@ it("deletes a draft only after confirmation", async () => {
   const user = userEvent.setup();
   const draftRow = await rowOf("Op Nord");
   const publishedRow = await rowOf("Op Sud");
-  expect(within(publishedRow).queryByRole("button", { name: "Supprimer" })).not.toBeInTheDocument();
-  await user.click(within(draftRow).getByRole("button", { name: "Supprimer" }));
+  expect(within(publishedRow).queryByRole("button", { name: /Supprimer/ })).not.toBeInTheDocument();
+  const trash = within(draftRow).getByRole("button", { name: "Supprimer Op Nord" });
+  expect(trash).toHaveTextContent("");
+  expect(trash.querySelector("svg.al-icon")).not.toBeNull();
+  expect(trash).toHaveAttribute("title", "Supprimer");
+  await user.click(trash);
   expect(deleted).not.toHaveBeenCalled();
   await user.click(within(draftRow).getByRole("button", { name: "Confirmer la suppression" }));
   await waitFor(() => expect(deleted).toHaveBeenCalledWith("11111111-1111-4111-8111-111111111111"));
@@ -91,7 +95,7 @@ it("shows the server's reason when a deletion is refused", async () => {
   renderWithProviders(<MissionsPage />);
   const user = userEvent.setup();
   const row = await rowOf("Op Nord");
-  await user.click(within(row).getByRole("button", { name: "Supprimer" }));
+  await user.click(within(row).getByRole("button", { name: "Supprimer Op Nord" }));
   await user.click(within(row).getByRole("button", { name: "Confirmer la suppression" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
     "a published mission cannot be deleted; withdraw it instead",
@@ -109,7 +113,7 @@ it("shows the server's reason when a creation is refused", async () => {
   );
   renderWithProviders(<MissionsPage />);
   const user = userEvent.setup();
-  await user.type(screen.getByLabelText("Nom"), "x");
+  await user.type(screen.getByRole("textbox", { name: "Nom" }), "x");
   await user.click(screen.getByRole("button", { name: "Créer la mission" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("name must not be blank");
 });

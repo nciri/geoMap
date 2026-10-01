@@ -2,7 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { Alert, Button, Icon, iconNames, Logo, MapPanel, StatusBadge } from "./components";
 
 it("draws every icon of the set, decorative unless titled", () => {
-  expect(iconNames).toHaveLength(64);
+  // The design system's 64 icons plus geoMap's 6 additions.
+  expect(iconNames).toHaveLength(70);
   for (const name of iconNames) {
     const { container, unmount } = render(<Icon name={name} />);
     const svg = container.querySelector("svg")!;

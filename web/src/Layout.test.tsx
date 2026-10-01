@@ -38,9 +38,10 @@ it("shows the planner's entries, the page title and who is signed in", () => {
   );
   expect(within(nav).queryByRole("link", { name: "Terminaux" })).toBeNull();
   expect(screen.getByRole("heading", { level: 1, name: "Missions" })).toBeInTheDocument();
-  expect(screen.getByText("Paul Planificateur")).toBeInTheDocument();
-  expect(screen.getByText("Planificateur")).toBeInTheDocument();
-  expect(screen.getByText("PP")).toBeInTheDocument();
+  const menu = screen.getByRole("button", { name: /Paul Planificateur/ });
+  expect(menu).toHaveTextContent("Planificateur");
+  expect(menu).toHaveTextContent("PP");
+  expect(menu).toHaveAttribute("aria-expanded", "false");
 });
 
 it("shows the administrator's entries", () => {
@@ -51,7 +52,9 @@ it("shows the administrator's entries", () => {
     "aria-current",
     "page",
   );
-  expect(screen.getByText("Administrateur")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Paul Planificateur/ })).toHaveTextContent(
+    "Administrateur",
+  );
 });
 
 it("collapses in the editor but keeps the links' names", async () => {
@@ -64,11 +67,50 @@ it("collapses in the editor but keeps the links' names", async () => {
   expect(localStorage.getItem("geomap.sidebar.editor")).toBe("expanded");
 });
 
-it("switches the theme and signs out", async () => {
+it("keeps the theme and sign-out in the user menu, each with an icon", async () => {
+  const user = userEvent.setup();
   renderAt("/");
-  await userEvent.click(screen.getByRole("button", { name: "Nuit" }));
-  expect(screen.getByRole("button", { name: "Nuit" })).toHaveAttribute("aria-pressed", "true");
+  expect(screen.queryByRole("menu")).toBeNull();
+  await user.click(screen.getByRole("button", { name: /Paul Planificateur/ }));
+  const menu = screen.getByRole("menu");
+  for (const item of menu.querySelectorAll("[role^=menuitem]")) {
+    expect(item.querySelector("svg.al-icon")).not.toBeNull();
+  }
+  expect(within(menu).getByRole("menuitemradio", { name: "Système" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await user.click(within(menu).getByRole("menuitemradio", { name: "Nuit" }));
   expect(document.documentElement.dataset.theme).toBe("dark");
-  await userEvent.click(screen.getByRole("button", { name: "Déconnexion" }));
+  expect(screen.queryByRole("menu")).toBeNull();
+
+  await user.click(screen.getByRole("button", { name: /Paul Planificateur/ }));
+  expect(screen.getByRole("menuitemradio", { name: "Nuit" })).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
+  await user.keyboard("{Escape}");
+  expect(screen.queryByRole("menu")).toBeNull();
+  expect(screen.getByRole("button", { name: /Paul Planificateur/ })).toHaveFocus();
+
+  await user.click(screen.getByRole("button", { name: /Paul Planificateur/ }));
+  await user.click(screen.getByRole("menuitem", { name: "Déconnexion" }));
   expect(session.signOut).toHaveBeenCalled();
+  // Back to the system theme: the store is module state shared with the next tests.
+  await user.click(screen.getByRole("button", { name: /Paul Planificateur/ }));
+  await user.click(screen.getByRole("menuitemradio", { name: "Système" }));
+});
+
+it("moves through the menu with the arrow keys and closes on an outside click", async () => {
+  const user = userEvent.setup();
+  renderAt("/");
+  await user.click(screen.getByRole("button", { name: /Paul Planificateur/ }));
+  const items = [...screen.getByRole("menu").querySelectorAll("[role^=menuitem]")];
+  expect(items[0]).toHaveFocus();
+  await user.keyboard("{ArrowDown}");
+  expect(items[1]).toHaveFocus();
+  await user.keyboard("{ArrowUp}{ArrowUp}");
+  expect(items.at(-1)).toHaveFocus();
+  await user.click(screen.getByText("liste"));
+  expect(screen.queryByRole("menu")).toBeNull();
 });

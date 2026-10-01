@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { createMission, deleteMission, listMissions } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { formatUtc, missionState, STATUS_LABELS } from "../format";
-import { Alert, Button, StatusBadge } from "../ui/components";
+import { Alert, Button, IconButton, StatusBadge } from "../ui/components";
 import { MissionForm } from "./MissionForm";
 
 export function MissionsPage() {
@@ -73,7 +73,12 @@ export function MissionsPage() {
                       </Button>
                     </>
                   ) : (
-                    <Button onClick={() => setConfirming(m.id)}>Supprimer</Button>
+                    <IconButton
+                      icon="trash"
+                      label={`Supprimer ${m.name}`}
+                      tooltip="Supprimer"
+                      onClick={() => setConfirming(m.id)}
+                    />
                   ))}
               </td>
             </tr>

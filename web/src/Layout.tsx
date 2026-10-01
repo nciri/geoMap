@@ -1,9 +1,8 @@
 import { Outlet, useLocation } from "react-router";
 import { useSession } from "./auth/AuthProvider";
-import { Button } from "./ui/components";
 import { Sidebar, useSidebarCollapsed, type NavItem } from "./ui/Sidebar";
 import { SiteHeader } from "./ui/SiteHeader";
-import { ThemeSwitch } from "./ui/ThemeSwitch";
+import { UserMenu } from "./ui/UserMenu";
 
 function titleOf(pathname: string): string {
   if (pathname.startsWith("/missions/")) return "Mission";
@@ -49,9 +48,8 @@ export function Layout() {
     <div className="shell">
       <Sidebar items={items} collapsed={collapsed} onToggle={toggle} />
       <div className="shell__main">
-        <SiteHeader title={titleOf(pathname)} user={{ initials: initials(name), name, role }}>
-          <ThemeSwitch />
-          <Button onClick={signOut}>Déconnexion</Button>
+        <SiteHeader title={titleOf(pathname)}>
+          <UserMenu user={{ initials: initials(name), name, role }} onSignOut={signOut} />
         </SiteHeader>
         <Outlet />
       </div>

@@ -95,3 +95,33 @@ it("keeps the imagery of an imagery-only mission when a vector basemap is chosen
     ),
   );
 });
+
+it("marks the only required field with a star and says what the basemap is for", async () => {
+  serve();
+  renderWithProviders(<MissionForm submitLabel="Créer la mission" onSubmit={vi.fn()} />);
+  const name = screen.getByRole("textbox", { name: "Nom" });
+  expect(name).toBeRequired();
+  expect(document.querySelector(`label[for="${name.id}"] .required-star`)).toHaveTextContent("*");
+  expect(screen.getAllByText("*")).toHaveLength(1);
+  expect(screen.getByText("Nécessaire pour publier.")).toBeInTheDocument();
+  expect(screen.getByText(/Aucune imagerie/)).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Créer la mission" }).querySelector("svg"),
+  ).not.toBeNull();
+});
+
+it("orders imagery with icon buttons named after the layer", async () => {
+  serve();
+  renderWithProviders(
+    <MissionForm
+      initial={mission({ layers: ["zone-nord", "paris-ortho"] })}
+      submitLabel="Enregistrer"
+      onSubmit={vi.fn()}
+    />,
+  );
+  const remove = await screen.findByRole("button", { name: "Retirer Paris ortho" });
+  expect(remove).toHaveTextContent("");
+  expect(remove).toHaveAttribute("title", "Retirer");
+  expect(screen.getByRole("button", { name: "Monter Paris ortho" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "Descendre Paris ortho" })).toBeDisabled();
+});

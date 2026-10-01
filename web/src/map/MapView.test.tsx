@@ -128,3 +128,13 @@ it("rebuilds the map at the same view when the theme changes", () => {
   expect(second.options.style.sprite).toMatch(/sprites\/v4\/dark$/);
   expect(second.fitBoundsCalls).toHaveLength(0);
 });
+
+it("shows each unreadable layer once after a theme rebuild", async () => {
+  const { rerender } = render(
+    <MapView vector={null} imagery={[paris]} mode="Satellite" theme="light" />,
+  );
+  await screen.findByRole("alert");
+  rerender(<MapView vector={null} imagery={[paris]} mode="Satellite" theme="dark" />);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  expect(screen.getAllByRole("alert")).toHaveLength(1);
+});

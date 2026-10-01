@@ -121,6 +121,9 @@ export function MapView({ vector, imagery, mode, theme, initialBounds, onReady, 
     return () => {
       disposed = true;
       setMap(null);
+      // The next map reads its archives again: these failures no longer describe it.
+      setBasemapError(null);
+      setImageryErrors([]);
       viewRef.current = {
         center: created.getCenter().toArray() as [number, number],
         zoom: created.getZoom(),
