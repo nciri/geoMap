@@ -131,6 +131,7 @@ legend {
   gap: var(--space-1);
 }
 .form-label {
+  display: block;
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
