@@ -13,7 +13,9 @@ import {
   type Feature,
 } from "../api/geomap";
 import { errorMessage } from "../api/client";
-import { STATUS_LABELS } from "../format";
+import { formatUtc, missionState, STATUS_LABELS } from "../format";
+import { Alert, Icon, IconButton, StatusBadge, type IconName } from "../ui/components";
+import { useTheme } from "../ui/theme";
 import { MissionForm } from "../missions/MissionForm";
 import { MapView } from "../map/MapView";
 import { ModeSwitch } from "../map/ModeSwitch";
@@ -36,6 +38,13 @@ import { FeaturePanel } from "./FeaturePanel";
 import { AssignmentPanel } from "./AssignmentPanel";
 import { PublicationPanel } from "./PublicationPanel";
 
+type Tab = "objets" | "symboles" | "diffusion";
+const TABS: { id: Tab; label: string; icon: IconName }[] = [
+  { id: "objets", label: "Objets", icon: "draw-polygon" },
+  { id: "symboles", label: "Symboles", icon: "symbol" },
+  { id: "diffusion", label: "Diffusion", icon: "publish" },
+];
+
 export function MissionEditorPage() {
   const { missionId = "" } = useParams();
   const queryClient = useQueryClient();
@@ -55,6 +64,9 @@ export function MissionEditorPage() {
   const [placing, setPlacing] = useState<PlacedSymbol | null>(null);
   const placingRef = useRef(placing);
   const [mode, setMode] = useState(loadMode);
+  const [tab, setTab] = useState<Tab>("objets");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { resolved: theme } = useTheme();
   const refreshFeatures = () =>
     queryClient.invalidateQueries({ queryKey: ["features", missionId] });
 
@@ -69,6 +81,8 @@ export function MissionEditorPage() {
           if (placed) {
             setPlacing(null);
             drawing.stopEditing();
+            // Show the placed symbol in the object list.
+            setTab("objets");
           }
           return refreshFeatures();
         },
@@ -103,8 +117,11 @@ export function MissionEditorPage() {
     setSelectedId(feature?.id ?? null);
     setDrawError(null);
     // Deselecting must release the previously reshaped object.
-    if (feature) setDrawError(drawing.edit(feature));
-    else drawing.stopEditing();
+    if (feature) {
+      // Its details sit under its row in the Objets tab.
+      setTab("objets");
+      setDrawError(drawing.edit(feature));
+    } else drawing.stopEditing();
   }
 
   useEffect(() => {
@@ -137,9 +154,14 @@ export function MissionEditorPage() {
   }, [map, features.data, editingId]);
 
   if (mission.error || features.error || basemaps.error) {
-    return <p role="alert">{errorMessage(mission.error ?? features.error ?? basemaps.error)}</p>;
+    return (
+      <Alert
+        severity="error"
+        title={errorMessage(mission.error ?? features.error ?? basemaps.error)}
+      />
+    );
   }
-  if (!mission.data || !features.data || !basemaps.data) return <p>Chargement…</p>;
+  if (!mission.data || !features.data || !basemaps.data) return <Alert title="Chargement…" />;
   const current = mission.data;
   const basemapOf = (layerId: string) => basemaps.data.find((b) => b.id === layerId);
   const toLayer = ({ id, name, attribution }: StackLayer): StackLayer => ({
@@ -158,72 +180,145 @@ export function MissionEditorPage() {
   return (
     <div className="editor">
       <aside className="panel">
-        <h1>{current.name}</h1>
-        <p>{STATUS_LABELS[current.status]}</p>
-        {!vector && (
-          <p role="status">Aucun fond de carte : choisissez-en un dans les paramètres.</p>
+        <header className="panel-head">
+          <div className="panel-head__row">
+            <h2 className="panel-head__title">{current.name}</h2>
+            <IconButton
+              icon="settings"
+              label="Paramètres"
+              tooltip="Paramètres de la mission"
+              aria-expanded={settingsOpen}
+              aria-controls="mission-settings"
+              onClick={() => setSettingsOpen(!settingsOpen)}
+            />
+          </div>
+          <div className="panel-head__meta">
+            <StatusBadge state={missionState(current.status)}>
+              {STATUS_LABELS[current.status]}
+            </StatusBadge>
+            <span className="panel-head__until">
+              <Icon name="clock" size={16} />
+              {current.validUntil
+                ? `Valide jusqu'au ${formatUtc(current.validUntil)}`
+                : "Sans date de validité"}
+            </span>
+          </div>
+        </header>
+        {settingsOpen && (
+          <section id="mission-settings" className="panel-settings" aria-label="Paramètres">
+            <MissionForm
+              initial={current}
+              submitLabel="Enregistrer"
+              onSubmit={async (input) => {
+                await updateMission(missionId, input);
+                await queryClient.invalidateQueries({ queryKey: ["mission", missionId] });
+              }}
+            />
+          </section>
         )}
-        <details>
-          <summary>Paramètres</summary>
-          <MissionForm
-            initial={current}
-            submitLabel="Enregistrer"
-            onSubmit={async (input) => {
-              await updateMission(missionId, input);
-              await queryClient.invalidateQueries({ queryKey: ["mission", missionId] });
-            }}
-          />
-        </details>
-        <DrawToolbar
-          mode={drawing.mode}
-          // Terra Draw exists only once the map has loaded; earlier clicks would be dropped.
-          disabled={!map}
-          onMode={(next) => {
-            setSelectedId(null);
-            setPlacing(null);
-            drawing.setMode(next);
-          }}
-        />
-        <details>
-          <summary>Symbole APP-6D</summary>
-          <SymbolPicker
-            onPlace={(placed) => {
-              setSelectedId(null);
-              setPlacing(placed);
-              drawing.setMode(modeFor(placed.symbol.geometry));
-            }}
-          />
-          {placing && (
-            <p role="status">
-              Tracez « {placing.symbol.name.trim()} » sur la carte ({placing.symbol.minPoints} à{" "}
-              {placing.symbol.maxPoints} points).
-            </p>
+        <div className="panel-alerts">
+          {!vector && (
+            <Alert
+              severity="degraded"
+              title="Aucun fond de carte : choisissez-en un dans les paramètres."
+            />
           )}
-        </details>
-        {drawError && <p role="alert">{drawError}</p>}
-        {symbols.error && <p role="alert">{symbols.error}</p>}
-        <FeaturePanel
-          missionId={missionId}
-          features={features.data}
-          selectedId={selectedId}
-          onSelect={select}
-        />
-        <AssignmentPanel missionId={missionId} disabled={current.status === "WITHDRAWN"} />
-        <PublicationPanel
-          mission={current}
-          revision={`${mission.dataUpdatedAt}-${features.dataUpdatedAt}`}
-          onSelectFeature={(featureId) => {
-            const target = features.data?.find((f) => f.id === featureId);
-            if (target) select(target);
-          }}
-        />
+          {drawError && <Alert severity="error" title={drawError} />}
+          {symbols.error && <Alert severity="error" title={symbols.error} />}
+        </div>
+        <div className="panel-tabs" role="tablist" aria-label="Sections de la mission">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              id={`tab-${t.id}`}
+              aria-selected={tab === t.id}
+              aria-controls={`panel-${t.id}`}
+              className="panel-tabs__tab"
+              onClick={() => setTab(t.id)}
+            >
+              <Icon name={t.icon} size={16} />
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="panel-body">
+          <div
+            role="tabpanel"
+            id="panel-objets"
+            aria-labelledby="tab-objets"
+            hidden={tab !== "objets"}
+          >
+            <DrawToolbar
+              mode={drawing.mode}
+              // Terra Draw exists only once the map has loaded; earlier clicks would be dropped.
+              disabled={!map}
+              onMode={(next) => {
+                setSelectedId(null);
+                setPlacing(null);
+                drawing.setMode(next);
+              }}
+            />
+            <FeaturePanel
+              missionId={missionId}
+              features={features.data}
+              selectedId={selectedId}
+              onSelect={select}
+            />
+          </div>
+          <div
+            role="tabpanel"
+            id="panel-symboles"
+            aria-labelledby="tab-symboles"
+            hidden={tab !== "symboles"}
+          >
+            <SymbolPicker
+              onPlace={(placed) => {
+                setSelectedId(null);
+                setPlacing(placed);
+                drawing.setMode(modeFor(placed.symbol.geometry));
+              }}
+            />
+            {placing && (
+              <p role="status" className="panel-hint">
+                Tracez « {placing.symbol.name.trim()} » sur la carte ({placing.symbol.minPoints} à{" "}
+                {placing.symbol.maxPoints} points).
+              </p>
+            )}
+          </div>
+          <div
+            role="tabpanel"
+            id="panel-diffusion"
+            aria-labelledby="tab-diffusion"
+            hidden={tab !== "diffusion"}
+          >
+            <AssignmentPanel missionId={missionId} disabled={current.status === "WITHDRAWN"} />
+          </div>
+          <PublicationPanel
+            mission={current}
+            revision={`${mission.dataUpdatedAt}-${features.dataUpdatedAt}`}
+            showDetails={tab === "diffusion"}
+            onShowDetails={() => setTab("diffusion")}
+            onSelectFeature={(featureId) => {
+              const target = features.data?.find((f) => f.id === featureId);
+              if (target) {
+                setTab("objets");
+                select(target);
+              }
+            }}
+          />
+        </div>
       </aside>
       <MapView
         key={current.layers.join("|") || "none"}
         vector={vector}
         imagery={imagery}
         mode={shown}
+        theme={theme}
         initialBounds={boundsOf(features.data)}
+        // Tools wait for the next map: clicks on a removed one would be dropped.
+        onRemoved={() => setMap(null)}
         onReady={(ready) => {
           addMissionLayers(ready);
           addSymbolLayers(ready);

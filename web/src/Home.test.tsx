@@ -54,7 +54,7 @@ it("shows planners their missions", async () => {
     http.get("/api/basemaps", () => HttpResponse.json([])),
   );
   renderAs(["planificateur", "administrateur"]);
-  expect(await screen.findByRole("heading", { name: "Missions" })).toBeInTheDocument();
+  expect(await screen.findByRole("button", { name: "Nouvelle mission" })).toBeInTheDocument();
 });
 
 it("refuses a user with neither role", async () => {

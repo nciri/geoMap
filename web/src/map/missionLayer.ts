@@ -5,10 +5,15 @@ import type { Feature, FeatureKind } from "../api/geomap";
 import { circlePolygon, type Position } from "./geodesy";
 import type { LngLatBounds2 } from "./MapView";
 import { MAP_FONTS } from "./style";
+import { colorToken } from "../ui/tokens";
+import { designTokens, mapColors } from "../ui/mapColors";
 
 export const MISSION_SOURCE = "mission";
-export const DEFAULT_COLOR = "#1e66f5";
-export const SUGGESTION_COLOR = "#df8e1d";
+// Mission colours are the same in Nuit and Jour: they draw on the map, not on the interface.
+const MAP = mapColors("light");
+export const DEFAULT_COLOR = MAP.feature;
+// An AI suggestion awaiting review, told apart from regular features by lightness.
+export const SUGGESTION_COLOR = colorToken(designTokens, "status-degraded", "light");
 
 interface MissionFeatureProperties {
   id: string;
@@ -106,7 +111,7 @@ export const MISSION_LAYERS: LayerSpecification[] = [
     paint: {
       "circle-radius": 6,
       "circle-color": color,
-      "circle-stroke-color": "#ffffff",
+      "circle-stroke-color": MAP.halo,
       "circle-stroke-width": 2,
     },
   },
@@ -115,7 +120,7 @@ export const MISSION_LAYERS: LayerSpecification[] = [
     type: "line",
     source: MISSION_SOURCE,
     filter: ["all", ["==", ["get", "kind"], "APP6"], lines],
-    paint: { "line-color": "#6c6f85", "line-width": 1, "line-dasharray": [2, 2] },
+    paint: { "line-color": MAP.guide, "line-width": 1, "line-dasharray": [2, 2] },
   },
   {
     id: "mission-label",
@@ -129,7 +134,7 @@ export const MISSION_LAYERS: LayerSpecification[] = [
       "text-offset": [0, 1.2],
       "text-anchor": "top",
     },
-    paint: { "text-halo-color": "#ffffff", "text-halo-width": 1.5 },
+    paint: { "text-halo-color": MAP.halo, "text-halo-width": 1.5 },
   },
 ];
 

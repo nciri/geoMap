@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { searchSymbols, type SymbolInfo } from "../api/geomap";
 import { errorMessage } from "../api/client";
 import { buildSidc, filledModifiers, GEOMETRY_LABELS, groupByCategory, hasEchelon } from "./sidc";
 import { SymbolFields, type SymbolChoice } from "./SymbolFields";
 import { SymbolIcon } from "./SymbolIcon";
+import { Alert, Button, Icon } from "../ui/components";
 
 export interface PlacedSymbol {
   symbol: SymbolInfo;
@@ -30,41 +31,57 @@ export function SymbolPicker({ onPlace }: { onPlace: (placed: PlacedSymbol) => v
 
   return (
     <section className="symbol-picker">
-      <label>
+      <label className="search-field">
         Rechercher un symbole
-        <input value={query} onChange={(e) => setQuery(e.target.value)} />
+        <span className="search-field__box">
+          <Icon name="search" size={16} />
+          <input
+            value={query}
+            placeholder="infantry, artillery…"
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </span>
       </label>
-      {results.error && <p role="alert">{errorMessage(results.error)}</p>}
+      {results.error && <Alert severity="error" title={errorMessage(results.error)} />}
       {groupByCategory(results.data ?? []).map(([category, symbols]) => (
-        <div key={category}>
-          <h3>{category}</h3>
+        <details key={category} open className="symbol-group">
+          <summary>{category}</summary>
           {symbols.map((s) => (
-            <button
-              key={s.basicId}
-              className={s.basicId === symbol?.basicId ? "selected" : undefined}
-              onClick={() => {
-                setSymbol(s);
-                setChoice(FRESH);
-              }}
-            >
-              {s.name} <small>{s.path}</small>
-            </button>
+            <Fragment key={s.basicId}>
+              <button
+                className={s.basicId === symbol?.basicId ? "selected" : undefined}
+                onClick={() => {
+                  setSymbol(s);
+                  setChoice(FRESH);
+                }}
+              >
+                {s.name} <small>{s.path}</small>
+              </button>
+              {/* The chosen symbol's settings open right under it. */}
+              {symbol && sidc && s.basicId === symbol.basicId && (
+                <div className="symbol-choice">
+                  <p>
+                    <strong>{symbol.name.trim()}</strong> · {GEOMETRY_LABELS[symbol.geometry]}
+                    {symbol.geometry !== "POINT" &&
+                      ` · ${symbol.minPoints} à ${symbol.maxPoints} points`}
+                  </p>
+                  <SymbolFields symbol={symbol} {...choice} onChange={setChoice} />
+                  {symbol.geometry === "POINT" && (
+                    <SymbolIcon
+                      sidc={sidc}
+                      modifiers={modifiers}
+                      alt={`Aperçu ${symbol.name.trim()}`}
+                    />
+                  )}
+                  <Button icon="symbol" onClick={() => onPlace({ symbol, sidc, modifiers })}>
+                    Placer sur la carte
+                  </Button>
+                </div>
+              )}
+            </Fragment>
           ))}
-        </div>
+        </details>
       ))}
-      {symbol && sidc && (
-        <div className="symbol-choice">
-          <p>
-            <strong>{symbol.name.trim()}</strong> · {GEOMETRY_LABELS[symbol.geometry]}
-            {symbol.geometry !== "POINT" && ` · ${symbol.minPoints} à ${symbol.maxPoints} points`}
-          </p>
-          <SymbolFields symbol={symbol} {...choice} onChange={setChoice} />
-          {symbol.geometry === "POINT" && (
-            <SymbolIcon sidc={sidc} modifiers={modifiers} alt={`Aperçu ${symbol.name.trim()}`} />
-          )}
-          <button onClick={() => onPlace({ symbol, sidc, modifiers })}>Placer sur la carte</button>
-        </div>
-      )}
     </section>
   );
 }

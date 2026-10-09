@@ -48,6 +48,7 @@ test("an administrator prepares basemaps and a device", async ({ page }) => {
 
 test("a planner draws, symbolises, assigns, publishes and exports a mission", async ({ page }) => {
   await signIn(page, "planner");
+  await page.getByRole("button", { name: "Nouvelle mission" }).click();
   await page.getByLabel("Nom").fill(missionName);
   await page.getByLabel("Fond de carte").selectOption({ label: `Zone A ${suffix}` });
   const nextWeek = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 16);
@@ -87,7 +88,7 @@ test("a planner draws, symbolises, assigns, publishes and exports a mission", as
   await expect(page.getByRole("button", { name: /Sans nom.*Cercle/ })).toBeVisible();
 
   // APP-6D infantry battalion.
-  await page.getByText("Symbole APP-6D").click();
+  await page.getByRole("tab", { name: "Symboles" }).click();
   await page.getByLabel("Rechercher un symbole").fill("infantry");
   await page
     .getByRole("button", { name: /^Infantry/ })
@@ -100,6 +101,7 @@ test("a planner draws, symbolises, assigns, publishes and exports a mission", as
   await expect(page.getByRole("button", { name: /APP-6D 10031000161211000000/ })).toBeVisible();
 
   // Assign the device; the validator then lets the mission through.
+  await page.getByRole("tab", { name: "Diffusion" }).click();
   await page.getByLabel(new RegExp(`Tablette ${suffix}`)).check();
   await page.getByRole("button", { name: "Enregistrer l'affectation" }).click();
   await expect(page.getByText("Affectation enregistrée.")).toBeVisible();
@@ -143,7 +145,7 @@ test("reshaping stays safe: Delete key, switching objects and basemap, circle ra
 
   // Switching basemap while reshaping keeps the editor alive.
   await page.getByRole("button", { name: /Sans nom.*Zone/ }).click();
-  await page.getByText("Paramètres").click();
+  await page.getByRole("button", { name: "Paramètres" }).click();
   await page.getByLabel("Fond de carte").selectOption({ label: `Zone B ${suffix}` });
   await page.getByRole("button", { name: "Enregistrer", exact: true }).click();
   await expect(page.getByRole("heading", { name: missionName })).toBeVisible();

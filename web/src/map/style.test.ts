@@ -13,7 +13,7 @@ function fontsUsed(style: ReturnType<typeof basemapStyle>): Set<string> {
 }
 
 it("loads every resource from the app's own origin", () => {
-  const style = basemapStyle({ vector, imagery: [paris] });
+  const style = basemapStyle({ vector, imagery: [paris], theme: "light" });
   expect(style.glyphs).toBe(`${location.origin}/map-assets/fonts/{fontstack}/{range}.pbf`);
   expect(style.sprite).toBe(`${location.origin}/map-assets/sprites/v4/light`);
   expect(style.sources[BASEMAP_SOURCE]).toMatchObject({
@@ -29,7 +29,7 @@ it("loads every resource from the app's own origin", () => {
 });
 
 it("labels the map in French with the fonts shipped in public/map-assets", () => {
-  const style = basemapStyle({ vector, imagery: [] });
+  const style = basemapStyle({ vector, imagery: [], theme: "light" });
   expect(style.layers.length).toBeGreaterThan(10);
   const used = fontsUsed(style);
   expect(used.size).toBeGreaterThan(0);
@@ -44,13 +44,13 @@ it("labels the map in French with the fonts shipped in public/map-assets", () =>
 });
 
 it("shows a plain background when the mission has no basemap", () => {
-  const style = basemapStyle({ vector: null, imagery: [] });
+  const style = basemapStyle({ vector: null, imagery: [], theme: "light" });
   expect(style.sources).toEqual({});
   expect(style.layers).toEqual([expect.objectContaining({ type: "background" })]);
 });
 
 it("stacks base layers, imagery in order, then roads and labels", () => {
-  const style = basemapStyle({ vector, imagery: [paris, lyon] });
+  const style = basemapStyle({ vector, imagery: [paris, lyon], theme: "light" });
   const ids = style.layers.map((l) => l.id);
   const first = ids.indexOf("imagery-paris-ortho");
   expect(ids.indexOf("imagery-lyon-ortho")).toBe(first + 1);
@@ -66,7 +66,7 @@ it("stacks base layers, imagery in order, then roads and labels", () => {
 });
 
 it("classifies roads, boundaries and every text as overlay", () => {
-  const overlay = basemapStyle({ vector, imagery: [] })
+  const overlay = basemapStyle({ vector, imagery: [], theme: "light" })
     .layers.filter(isOverlay)
     .map((l) => l.id);
   expect(overlay).toContain("roads_highway");
@@ -77,7 +77,7 @@ it("classifies roads, boundaries and every text as overlay", () => {
 });
 
 it("still shows imagery without a vector basemap", () => {
-  const style = basemapStyle({ vector: null, imagery: [paris] });
+  const style = basemapStyle({ vector: null, imagery: [paris], theme: "light" });
   expect(style.layers.map((l) => l.id)).toEqual(["background", "imagery-paris-ortho"]);
 });
 
@@ -90,9 +90,36 @@ it("hands MapLibre attributions as escaped text, with entities decoded", () => {
   const style = basemapStyle({
     vector: { ...vector, attribution: "&copy; OpenStreetMap" },
     imagery: [hostile],
+    theme: "light",
   });
   expect(style.sources[BASEMAP_SOURCE]).toMatchObject({ attribution: "© OpenStreetMap" });
   const imagery = (style.sources["imagery-paris-ortho"] as { attribution: string }).attribution;
   expect(imagery).not.toMatch(/<|>/);
   expect(imagery).toContain("© IGN");
+});
+
+it.each(["light", "dark"] as const)("uses the %s flavour and a sprite the app serves", (theme) => {
+  const style = basemapStyle({ vector, imagery: [], theme });
+  expect(style.sprite).toBe(`${location.origin}/map-assets/sprites/v4/${theme}`);
+  expect(existsSync(`public/map-assets/sprites/v4/${theme}.json`)).toBe(true);
+  expect(existsSync(`public/map-assets/sprites/v4/${theme}@2x.png`)).toBe(true);
+  for (const font of fontsUsed(style)) expect(MAP_FONTS).toContain(font);
+});
+
+it("draws the dark flavour differently from the light one", () => {
+  const paintOf = (theme: "light" | "dark") =>
+    (
+      basemapStyle({ vector, imagery: [], theme }).layers.find((l) => l.id === "earth") as {
+        paint: unknown;
+      }
+    ).paint;
+  expect(paintOf("dark")).not.toEqual(paintOf("light"));
+});
+
+it("fills an empty map with the design system's empty colour", () => {
+  const style = basemapStyle({ vector: null, imagery: [], theme: "dark" });
+  expect(style.layers[0]).toMatchObject({
+    type: "background",
+    paint: { "background-color": "#e8e4d8" },
+  });
 });

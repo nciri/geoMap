@@ -13,6 +13,7 @@ import { DEFAULT_COLOR, isCircle } from "../map/missionLayer";
 import { filledModifiers, hasEchelon, parseSidc, withIdentityAndEchelon } from "../symbols/sidc";
 import { SymbolFields, type SymbolChoice } from "../symbols/SymbolFields";
 import { SymbolIcon } from "../symbols/SymbolIcon";
+import { Alert, Button, Icon, IconButton, StatusBadge, type IconName } from "../ui/components";
 
 interface Props {
   missionId: string;
@@ -26,6 +27,13 @@ function typeLabel(f: Feature): string {
   if (isCircle(f)) return "Cercle";
   if (f.geometry.type === "Point") return "Point";
   return f.geometry.type === "LineString" ? "Ligne" : "Zone";
+}
+
+function typeIcon(f: Feature): IconName {
+  if (f.kind === "APP6") return "symbol";
+  if (isCircle(f)) return "crosshair";
+  if (f.geometry.type === "Point") return "draw-point";
+  return f.geometry.type === "LineString" ? "draw-line" : "draw-polygon";
 }
 
 const isPending = (f: Feature) => f.suggestionStatus === "PENDING";
@@ -47,70 +55,83 @@ export function FeaturePanel({ missionId, features, selectedId, onSelect }: Prop
   }
 
   return (
-    <section className="features">
-      <h2>Objets ({visible.length})</h2>
-      {error && <p role="alert">{error}</p>}
+    <section className="features panel-section">
+      <h3 className="panel-section__title">Objets ({visible.length})</h3>
+      {error && <Alert severity="error" title={error} />}
+      {visible.length === 0 && (
+        <p className="form-empty">
+          <Icon name="draw-polygon" size={16} />
+          Aucun objet : dessinez sur la carte avec les outils ci-dessus.
+        </p>
+      )}
       <ul>
         {visible.map((f) => {
           const name = f.name || "Sans nom";
           return (
             <li key={f.id} className={f.id === selectedId ? "selected" : undefined}>
-              <button className="feature-item" onClick={() => onSelect(f)}>
-                <span>{name}</span> <small>{typeLabel(f)}</small>
-                {isPending(f) && <span className="badge"> Suggestion IA</span>}
-              </button>
-              {isPending(f) && (
-                <span className="decision">
-                  <button
-                    aria-label={`Accepter ${name}`}
-                    onClick={() => void run(() => acceptFeature(missionId, f.id))}
-                  >
-                    Accepter
-                  </button>
-                  <button
-                    aria-label={`Rejeter ${name}`}
-                    onClick={() => void run(() => rejectFeature(missionId, f.id))}
-                  >
-                    Rejeter
-                  </button>
-                </span>
+              <div className="feature-row">
+                <button className="feature-item" onClick={() => onSelect(f)}>
+                  <Icon name={typeIcon(f)} size={16} />
+                  <span className="feature-item__text">
+                    <span className="feature-item__name">{name}</span> <small>{typeLabel(f)}</small>
+                  </span>
+                  {isPending(f) && <StatusBadge state="pending">Suggestion IA</StatusBadge>}
+                </button>
+                {isPending(f) && (
+                  <span className="decision">
+                    <IconButton
+                      icon="check"
+                      label={`Accepter ${name}`}
+                      tooltip="Accepter"
+                      onClick={() => void run(() => acceptFeature(missionId, f.id))}
+                    />
+                    <IconButton
+                      icon="close"
+                      label={`Rejeter ${name}`}
+                      tooltip="Rejeter"
+                      onClick={() => void run(() => rejectFeature(missionId, f.id))}
+                    />
+                  </span>
+                )}
+              </div>
+              {selected?.id === f.id && (
+                <FeatureDetails
+                  key={selected.id}
+                  feature={selected}
+                  onSave={(changes) =>
+                    run(() =>
+                      updateFeature(missionId, selected.id, {
+                        kind: selected.kind,
+                        geometry: selected.geometry,
+                        name: changes.name,
+                        description: changes.description,
+                        style:
+                          selected.kind === "GENERIC"
+                            ? {
+                                ...selected.style,
+                                color: changes.color,
+                                ...(changes.radiusMeters
+                                  ? { radiusMeters: changes.radiusMeters }
+                                  : {}),
+                              }
+                            : selected.style,
+                        sidc: changes.sidc ?? selected.sidc,
+                        modifiers: changes.modifiers ?? selected.modifiers,
+                      }),
+                    )
+                  }
+                  onDelete={() =>
+                    run(async () => {
+                      await deleteFeature(missionId, selected.id);
+                      onSelect(null);
+                    })
+                  }
+                />
               )}
             </li>
           );
         })}
       </ul>
-      {selected && (
-        <FeatureDetails
-          key={selected.id}
-          feature={selected}
-          onSave={(changes) =>
-            run(() =>
-              updateFeature(missionId, selected.id, {
-                kind: selected.kind,
-                geometry: selected.geometry,
-                name: changes.name,
-                description: changes.description,
-                style:
-                  selected.kind === "GENERIC"
-                    ? {
-                        ...selected.style,
-                        color: changes.color,
-                        ...(changes.radiusMeters ? { radiusMeters: changes.radiusMeters } : {}),
-                      }
-                    : selected.style,
-                sidc: changes.sidc ?? selected.sidc,
-                modifiers: changes.modifiers ?? selected.modifiers,
-              }),
-            )
-          }
-          onDelete={() =>
-            run(async () => {
-              await deleteFeature(missionId, selected.id);
-              onSelect(null);
-            })
-          }
-        />
-      )}
     </section>
   );
 }
@@ -198,7 +219,7 @@ function FeatureDetails({
           <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         </label>
       )}
-      {sidc && symbol.error && <p role="alert">{errorMessage(symbol.error)}</p>}
+      {sidc && symbol.error && <Alert severity="error" title={errorMessage(symbol.error)} />}
       {info && rebuilt && (
         <>
           <SymbolFields symbol={info} {...choice} onChange={setChoice} />
@@ -224,22 +245,20 @@ function FeatureDetails({
           />
         </label>
       )}
-      <button type="submit" disabled={saving}>
+      <Button type="submit" disabled={saving}>
         Enregistrer l'objet
-      </button>
+      </Button>
       {confirming ? (
         <>
-          <button type="button" onClick={() => void onDelete()}>
+          <Button variant="irreversible" onClick={() => void onDelete()}>
             Confirmer la suppression
-          </button>
-          <button type="button" onClick={() => setConfirming(false)}>
+          </Button>
+          <Button variant="ghost" onClick={() => setConfirming(false)}>
             Annuler
-          </button>
+          </Button>
         </>
       ) : (
-        <button type="button" onClick={() => setConfirming(true)}>
-          Supprimer l'objet
-        </button>
+        <Button onClick={() => setConfirming(true)}>Supprimer l'objet</Button>
       )}
     </form>
   );

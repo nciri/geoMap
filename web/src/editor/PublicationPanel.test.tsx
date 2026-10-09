@@ -53,6 +53,9 @@ it("lists blocking errors in French, links them to their object and blocks publi
   expect(await screen.findByText("Aucun terminal enrôlé affecté")).toBeInTheDocument();
   expect(screen.getByText("Suggestions IA en attente")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Publier/ })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /Publier la version/ })).toHaveClass("al-btn--primary");
+  const errors = screen.getByRole("list", { name: "Erreurs bloquantes" });
+  expect(errors.querySelector(".al-status--error")).not.toBeNull();
   await userEvent.click(screen.getByRole("button", { name: "Symbole impossible à afficher" }));
   expect(onSelectFeature).toHaveBeenCalledWith("f1");
 });

@@ -2,6 +2,8 @@ import { layers, namedFlavor } from "@protomaps/basemaps";
 import type { LayerSpecification, StyleSpecification } from "maplibre-gl";
 import { basemapTilesUrl } from "../api/geomap";
 import { attributionText } from "../format";
+import { mapColors } from "../ui/mapColors";
+import type { ResolvedTheme } from "../ui/theme";
 
 export const BASEMAP_SOURCE = "basemap";
 export const MAP_FONTS = ["Noto Sans Regular", "Noto Sans Medium", "Noto Sans Italic"];
@@ -32,14 +34,21 @@ export function isOverlay(layer: LayerSpecification): boolean {
 export function basemapStyle(stack: {
   vector: StackLayer | null;
   imagery: StackLayer[];
+  theme: ResolvedTheme;
 }): StyleSpecification {
   const assets = `${location.origin}/map-assets`;
   const vectorLayers = stack.vector
-    ? layers(BASEMAP_SOURCE, namedFlavor("light"), { lang: "fr" })
+    ? layers(BASEMAP_SOURCE, namedFlavor(stack.theme), { lang: "fr" })
     : [];
   const base: LayerSpecification[] = stack.vector
     ? vectorLayers.filter((l) => !isOverlay(l))
-    : [{ id: "background", type: "background", paint: { "background-color": "#e8e4d8" } }];
+    : [
+        {
+          id: "background",
+          type: "background",
+          paint: { "background-color": mapColors(stack.theme).empty },
+        },
+      ];
   const imageryLayers: LayerSpecification[] = stack.imagery.map((layer) => ({
     id: IMAGERY_PREFIX + layer.id,
     type: "raster",
@@ -48,7 +57,7 @@ export function basemapStyle(stack: {
   return {
     version: 8,
     glyphs: `${assets}/fonts/{fontstack}/{range}.pbf`,
-    sprite: `${assets}/sprites/v4/light`,
+    sprite: `${assets}/sprites/v4/${stack.theme}`,
     sources: {
       ...(stack.vector
         ? {

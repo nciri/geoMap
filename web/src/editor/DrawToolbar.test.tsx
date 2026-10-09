@@ -21,3 +21,8 @@ it("keeps every tool disabled until the map can draw", () => {
     expect(screen.getByRole("button", { name })).toBeDisabled();
   }
 });
+
+it("shows each tool's icon next to its label", () => {
+  render(<DrawToolbar mode="static" onMode={vi.fn()} />);
+  expect(screen.getByRole("button", { name: "Zone" }).querySelector("svg.al-icon")).not.toBeNull();
+});
